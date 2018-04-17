@@ -1,0 +1,21 @@
+rule bowtie2_aln:
+	input:
+		INDEX1=config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]+".1.bt2",
+		INDEX2=config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]+".2.bt2",
+		INDEX3=config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]+".3.bt2",
+		INDEX4=config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]+".4.bt2",
+		INDEX_REV1=config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]+".rev.1.bt2",
+		INDEX_REV2=config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]+".rev.2.bt2",
+		FASTQ="{replicat}/{condition}/MergedReads/{sample}_merged.fq.gz"
+		
+	output: "{replicat}/{condition}/AlignementBowtie2/{sample}_sorted.bam"
+	params:
+		BASENAME=config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"],
+		STRAND_OPTION=config["ALIGNEMENT"]["bowtie2"]["STRAND"]
+	shell:
+		 "bowtie2 -p16 --very-sensitive --score-min=C,-15,0 --mm -x {params.BASENAME} -q -U {input.FASTQ}  2> bowtie2.log | samtools view -hbuS | samtools sort -o {output} "
+
+
+#-very--sensitive : c'est le nmbre de tentative d'alignement ( opposé a very-fast où on tante pas beaucoup
+
+# score_min=C, 15, 0 permet de décrire la fonction de score minimal pour que un alignement soit accepté, f(X) représente la fonction qui donne le score. ICI Il s'agit de f(X)=15+0 x X où X représente la taille du read. Donc ici notre score est indépendant de la taille de read est doit être au minimum de 15 pour être considéré ok

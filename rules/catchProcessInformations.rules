@@ -1,0 +1,12 @@
+rule catchProcessInformations:
+	input:
+		FILE_LOG="{replicat}/{condition}/AlignementStarWithChimeric/{sample}_Log.final.out",
+		FILE_STAR_ALN="{replicat}/{condition}/AlignementStarWithChimeric/{sample}_Aligned.out.sam",
+		FILE_BOWTIE2_ALN="{replicat}/{condition}/AlignementBowtie2/{sample}_sorted.bam",
+		FILE_ANCHORS="{replicat}/{condition}/find_circ/{sample}_anchors.fastq.gz",
+		FILE_CHIM="{replicat}/{condition}/AlignementStarWithChimeric/{sample}_ChimericFilter.out.junction"
+	output:
+		FILE_OUTPUT="{replicat}/{condition}/Global_results/{sample}{condition}_ProcessingInfos.csv"
+	run:
+		shell("python2.7 /CirComPara/myScript/catchProcessingInfos.py -l {input.FILE_LOG} -s {input.FILE_STAR_ALN} -b {input.FILE_BOWTIE2_ALN} -a {input.FILE_ANCHORS} -o {output.FILE_OUTPUT} -c {input.FILE_CHIM}")
+		

@@ -1,0 +1,12 @@
+rule acompute_circRNA_finder:
+	input:
+		INPUT_DIRECTORY="{replicat}/{condition}/AlignementStarWithChimeric/{sample}_ChimericFilter.out.junction"
+	output:
+		OUTPUT_FILE="{replicat}/{condition}/circRNA_finder/{sample}_filteredJunctions_withHeaders.bed"
+	params:
+		OUTPUT_DIRECTORY="{replicat}/{condition}/circRNA_finder/",
+		INPUT_DIRECTORY="{replicat}/{condition}/AlignementStarWithChimeric/",
+		fileModel="{replicat}/{condition}/circRNA_finder/{sample}",
+	run:
+		shell("postProcessStarAlignment.pl {params.INPUT_DIRECTORY} {params.OUTPUT_DIRECTORY}"),
+		shell("(echo 'Chromosome \t Start \t End \t Number_of_junction_reads \t Strand \t Reads' && cat {params.fileModel}_filteredJunctions.bed) > {output.OUTPUT_FILE}"),

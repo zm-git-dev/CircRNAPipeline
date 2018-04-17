@@ -1,0 +1,30 @@
+rule getStranded:
+	input:
+		FILESORTED="{replicat}/{condition}/AlignementBowtie2/{sample}_sorted.bam"
+	params:
+		bam1="{replicat}/{condition}/AlignementBowtie2/{sample}_fwd1.bam",
+		bam2="{replicat}/{condition}/AlignementBowtie2/{sample}_fwd2.bam",
+		mergeBamF="{replicat}/{condition}/AlignementBowtie2/{sample}_merge_fwd.bam",
+		bam3="{replicat}/{condition}/AlignementBowtie2/{sample}_rev1.bam",
+                bam4="{replicat}/{condition}/AlignementBowtie2/{sample}_rev2.bam",
+                mergeBamR="{replicat}/{condition}/AlignementBowtie2/{sample}_merge_rev.bam",
+	output:	
+		fwd="{replicat}/{condition}/AlignementBowtie2/{sample}_fwd_sorted.bam",
+		rev="{replicat}/{condition}/AlignementBowtie2/{sample}_rev_sorted.bam"
+	run:
+		shell(" samtools view -b -f 128 -F 16 {input.FILESORTED} > {params.bam1} && samtools view -b -f 80 {input.FILESORTED}  > {params.bam2} && samtools merge -f {params.mergeBamF} {params.bam1} {params.bam2} && samtools sort {params.mergeBamF} -o {output.fwd} ")
+		shell("samtools view -b -f 144 {input.FILESORTED} > {params.bam3} && samtools view -b -f 64 -F 16 {input.FILESORTED}  > {params.bam4} && samtools merge -f {params.mergeBamR} {params.bam3} {params.bam4} && samtools sort {params.mergeBamR} -o {output.rev} ")
+		shell("rm {params.bam1} && rm {params.bam2} && rm {params.bam3} && rm {params.bam4} && rm {params.mergeBamF} && rm {params.mergeBamR}")
+		
+
+
+
+		# Forward strand.
+			# 1. alignments of the second in pair if they map to the forward strand
+			# 2. alignments of the first in pair if they map to the reverse  strand
+			# Combine alignments that originate on the forward strand.
+
+		# Reverse strand
+			# 1. alignments of the second in pair if they map to the reverse strand
+			# 2. alignments of the first in pair if they map to the forward strand
+			# Combine alignments that originate on the reverse strand.	

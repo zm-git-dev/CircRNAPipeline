@@ -1,0 +1,10 @@
+rule star_index:
+	input:
+		GENOME=config["GENOME"]["PATH"]+config["GENOME"]["NAME"]+config["GENOME"]["EXTENSION"]
+	output:
+		config["INDEX"]["STAR"]["PATH"]+"Genome"
+	params:
+		addParameter=config["INDEX"]["STAR"]["additionnalParamters"],
+		outputDir=config["INDEX"]["STAR"]["PATH"]
+	run:
+		shell("STAR {params.addParameter} --runMode genomeGenerate --genomeDir {params.outputDir} --genomeFastaFiles {input.GENOME}")		

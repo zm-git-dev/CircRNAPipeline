@@ -1,0 +1,20 @@
+rule star_aln_with_chimeric:
+	input:
+		INDEX=config["INDEX"]["STAR"]["PATH"]+"Genome",
+		FASTQ="{replicat}/{condition}/MergedReads/{sample}_merged.fq.gz"
+	output:
+		"{replicat}/{condition}/AlignementStarWithChimeric/{sample}_Chimeric.out.junction",
+		"{replicat}/{condition}/AlignementStarWithChimeric/{sample}_Aligned.out.sam",
+		"{replicat}/{condition}/AlignementStarWithChimeric/{sample}_Log.final.out"
+		
+	params:
+		thread=config["ALIGNEMENT"]["STAR"]["THREAD"],
+		readFileCommand=config["ALIGNEMENT"]["STAR"]["READ_FILE_COMMAND"],
+		indexDir=config["INDEX"]["STAR"]["PATH"],
+		outputDir="{replicat}/{condition}/AlignementStarWithChimeric/{sample}_",
+		gtf=config["ANNOTATION"]["PATH"]
+	run:
+		shell("STAR --chimSegmentMin 10 --runThreadN {params.thread} --genomeDir {params.indexDir} --readFilesIn {input.FASTQ} --readFilesCommand {params.readFileCommand} --outFileNamePrefix {params.outputDir} --sjdbGTFfile {params.gtf}")
+
+##En fait ici on envoie le fastq2 avant le fastq1 pour faire 'croire' a star que read 1 est notre read2 et read2 notre read1. En effet, lorsqu'il va chercher les chimerique, automatiquement il va reverse complement read2 pour l'obtenir dans le meme sens que read1 où i assume que read1 est forward. Or dans notre cas c'est read2 le forward et read1 le reverse donc on inverse.DONC a verifier et a optionnaliser si ajamais en fati cest deja de base dans le bon sens
+

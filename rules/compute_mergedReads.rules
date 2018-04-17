@@ -1,0 +1,16 @@
+rule compute_mergedReads:
+	input:
+		FASTQ1=lambda wildcards: config[wildcards.sample]["FASTQ_1"]["PATH"]+config[wildcards.sample]["FASTQ_1"]["NAME"]+config[wildcards.sample]["extension"],
+		FASTQ2=lambda wildcards: config[wildcards.sample]["FASTQ_2"]["PATH"]+config[wildcards.sample]["FASTQ_2"]["NAME"]+config[wildcards.sample]["extension"]
+	output:
+		"{replicat}/{condition}/MergedReads/{sample}_merged.fq.gz"
+	params:
+		THREAD=config["BBMERGE"]["THREAD"],
+		ITERATION=config["BBMERGE"]["ITERATION"],
+		EXTENDS2=config["BBMERGE"]["EXTENDS2"],
+		OUTDIR="{replicat}/{condition}/MergedReads/{sample}",
+		NoZipedOutput="{replicat}/{condition}/MergedReads/{sample}_merged.fq"
+	run:
+		shell("bbmerge-auto.sh in={input.FASTQ2} in2={input.FASTQ1} out={params.NoZipedOutput} outu={params.OUTDIR}_unmerged.fq ihist={params.OUTDIR}_ihist.txt ecct extend2={params.EXTENDS2} iterations={params.ITERATION} t={params.THREAD}"),
+		shell("gzip {params.NoZipedOutput}")
+	

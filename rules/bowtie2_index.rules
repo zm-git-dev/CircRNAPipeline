@@ -1,0 +1,18 @@
+rule bowtie2_index:
+	input:
+		GENOME=config["GENOME"]["PATH"]+config["GENOME"]["NAME"]+config["GENOME"]["EXTENSION"]
+	output:
+		config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]+".1.bt2",
+                config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]+".2.bt2",
+                config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]+".3.bt2",
+                config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]+".4.bt2",
+                config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]+".rev.1.bt2",
+                config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]+".rev.2.bt2"
+	message:
+		"Start to indexe the Genome {input.GENOME} with bowtie2"
+	params:
+		additionnalParamters=config["INDEX"]["bowtie2"]["additionnalParamters"],
+		OUTPUT_NAME=config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]
+	shell:
+		" /CirComPara/tools/bowtie2-2.2.9/bowtie2-build {params.additionnalParamters} {input.GENOME} {params.OUTPUT_NAME}" 
+

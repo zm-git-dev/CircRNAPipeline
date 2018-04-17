@@ -1,0 +1,12 @@
+rule createRDSFiles:
+	input:
+		[config[data]["REPLICAT"]+"/"+config[data]["CONDITION_NAME"]+"/Global_results/"+data+config[data]["CONDITION_NAME"]+"_Annotate.csv" for data in config["SAMPLE"]],
+		[config[data]["REPLICAT"]+"/"+config[data]["CONDITION_NAME"]+"/Global_results/"+data+config[data]["CONDITION_NAME"]+"_ProcessingInfos.csv" for data in config["SAMPLE"]]
+	
+	output:
+		FILE_OUTPUT1="dataAnalyseCirc.rds",
+		FILE_OUTPUT2="dataAnalyseProcess.rds"
+	run:
+		shell("Rscript /CirComPara/myScript/createResult.R --config=\"config.json\"")
+		
+		

@@ -1,0 +1,7 @@
+rule eliminate_artefacts:
+	input:
+		ChimericFile="{replicat}/{condition}/AlignementStarWithChimeric/{sample}_Chimeric.out.junction"
+	output:
+		resultatFilter="{replicat}/{condition}/AlignementStarWithChimeric/{sample}_ChimericFilter.out.junction"
+	run:
+		shell("python2.7 /CirComPara/myScript/eliminateArtfact_Chimerics.py -c {input.ChimericFile} -o {output.resultatFilter}")

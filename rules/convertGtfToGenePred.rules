@@ -1,0 +1,9 @@
+rule convertGtfToGenePred:
+	input:
+		FILE_INPUT=config["ANNOTATION"]["PATH"]
+	output:
+		file_genePred="annotation/"+config["ANNOTATION"]["NAME"]+".txt"
+	run:
+		shell("./myScript/gtfToGenePred {input.FILE_INPUT} preGenePred.txt")
+		shell("awk '{{if (NF < 11){{ print $1 \"\t\" $1 \"\t\" $2 \"\t\" $3 \"\t\" $4 \"\t\" $5 \"\t\" $6 \"\t\" $7 \"\t\" $8 \"\t\" $9 \"\t\" $10 > \"{output.file_genePred}\"}} else{{print $0 > \"{output.file_genePred}\" }}}}' preGenePred.txt")
+		shell("rm preGenePred.txt")

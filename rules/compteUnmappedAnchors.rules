@@ -1,0 +1,19 @@
+rule computeAnchors:
+	input:
+		FILE_INPUT="{replicat}/{condition}/AlignementBowtie2/{sample}_sorted.bam"
+	output:
+		FILE_OUTPUT="{replicat}/{condition}/find_circ/{sample}_anchors.fastq.gz"
+	params:
+		tmpUnmap="{replicat}/{condition}/find_circ/{sample}_unMapped.bam",
+		tmpHeaderLengthFilter="{replicat}/{condition}/find_circ/{sample}_readsAnchors.fastq",
+		tmpfilteredHeader="{replicat}/{condition}/find_circ/{sample}_readsAnchorsfiltered.fastq"
+		
+	run:
+		shell("samtools view -hf 4 {input.FILE_INPUT} | samtools view -Sb > {params.tmpUnmap}"),
+		shell("python2.7 /CirComPara/tools/find_circ-master/unmapped2anchors.py {params.tmpUnmap} > {params.tmpHeaderLengthFilter}"),
+		shell("cat {params.tmpHeaderLengthFilter} | awk 'BEGIN {{OFS = \"\\n\"}} {{headerA = $0 ; getline seqA ; getline qheaderA ; getline qseqA; getline headerB ; getline seqB ; getline qheaderB ; getline qseqB ; if (length(headerA) <= 250) {{print headerA, seqA, qheaderA, qseqA, headerB, seqB, qheaderB, qseqB}}}}' > {params.tmpfilteredHeader}"),
+		shell("gzip {params.tmpfilteredHeader}"),
+		shell("mv {params.tmpfilteredHeader}.gz {output.FILE_OUTPUT}"),
+		shell("rm {params.tmpUnmap}"),
+		shell("rm {params.tmpHeaderLengthFilter}")
+			
