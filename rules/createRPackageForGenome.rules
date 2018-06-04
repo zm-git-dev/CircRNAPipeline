@@ -1,0 +1,11 @@
+rule createRPackageForGenome:
+	input:
+		GENOME=config["GENOME"]["PATH"]+config["GENOME"]["NAME"]+config["GENOME"]["EXTENSION"]
+	output:
+		package="BSgenome."+config["GENOME"]["NAME"]+"."+config["GENOME"]["SOURCE"]+".1_1.0.tar.gz"
+	params:
+		organism=config["GENOME"]["NAME"],
+		source=config["GENOME"]["SOURCE"],
+		nameSeq=config["GENOME"]["RExpSeqNames"]
+	run:
+		shell("bash /CirComPara/myScript/createRPackage.sh -g \"{input.GENOME}\" -r \"ReposDistinctChr\" -o \"{params.organism}\" -s \"{params.source}\" -n \"{params.nameSeq}\" ")

@@ -2,11 +2,13 @@ rule merge_predictions:
 	input:
 		CIRCEXPLORER2="{replicat}/{condition}/CircExplorer2/{sample}_back_spliced_junction_withHeaders.bed",
 		FINDCIRC="{replicat}/{condition}/find_circ/Resultats/{sample}_filtered_splice_circ_withHeaders.bed",
-		CIRCRNAFINDER="{replicat}/{condition}/circRNA_finder/{sample}_filteredJunctions_withHeaders.bed"
+		CIRCRNAFINDER="{replicat}/{condition}/circRNA_finder/{sample}_filteredJunctions_withHeaders.bed",
+		PACKAGE_GENOME="BSgenome."+config["GENOME"]["NAME"]+"."+config["GENOME"]["SOURCE"]+".1_1.0.tar.gz"
 	output:
 		merge="{replicat}/{condition}/Global_results/{sample}{condition}Merge.csv"
 	params:
 		condition="{condition}",
-		path="{replicat}/{condition}/Global_results/{sample}"
+		path="{replicat}/{condition}/Global_results/{sample}",
+		packageName="BSgenome."+config["GENOME"]["NAME"]+"."+config["GENOME"]["SOURCE"]+".1"
 	run:
-		shell("Rscript /CirComPara/myScript/mergeScript.R --circExplorer2=\"{input.CIRCEXPLORER2}\" --circRNAFinder=\"{input.CIRCRNAFINDER}\" --findCirc=\"{input.FINDCIRC}\" --condition=\"{params.condition}\" --outputPath=\"{params.path}\" ")	
+		shell("Rscript /CirComPara/myScript/mergeScript.R --circExplorer2=\"{input.CIRCEXPLORER2}\" --circRNAFinder=\"{input.CIRCRNAFINDER}\" --findCirc=\"{input.FINDCIRC}\" --condition=\"{params.condition}\" --outputPath=\"{params.path}\" --packageName=\"{params.packageName}\" ")	

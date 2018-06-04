@@ -19,9 +19,7 @@ getArguements = function(){
     make_option(c("--gtf"), type = "character", default = NULL,
                 help="path of the GTF file", metavar="character"),
     make_option(c("--biomaRtDataSet"), type = "character", default = NULL,
-                help="Name of the biomaRt dataset to use for annotation", metavar="character"),
-    make_option(c("--idBDD"), type = "character", default = NULL,
-                help="Name source of gene_id RefSeq or Ensembl", metavar="character")
+                help="Name of the biomaRt dataset to use for annotation", metavar="character")
   ); 
   opt_parser = OptionParser(option_list=option_list);
   opt = parse_args(opt_parser);
@@ -35,8 +33,6 @@ condition = as.character(opt$condition);
 path = as.character(opt$path);
 gtf = as.character(opt$gtf);
 mergeTable = as.character(opt$mergeTable);
-idBDD = as.character(opt$idBDD);
-
 # biomaRtDataSet est directement utilisé dans le if pour savoir s'il a été envoyé sinon il n'y aura pas de geneSymbol et GeneBioType
 
 #### Avec RtrackLayer
@@ -47,7 +43,6 @@ idBDD = as.character(opt$idBDD);
 # biomaRtDataset = "hsapiens_gene_ensembl";
 # mergeTable = "./Janvier2014/Senescence/SenescenceFinalMergeTest.csv";
  
-# idBDD = "Ensembl"
 
 ###################################################################################################
 ################################### START FONCTIONS  ##############################################
@@ -196,17 +191,14 @@ annotateTranscript = function(TElement, GRElement, strand, resultat, test){
   resultat[[paste0("GeneSymbol",test)]] = genes[genes$gene_id == geneID]$gene_symbol
   resultat[[paste0("GeneBioType",test)]] = genes[genes$gene_id == geneID]$gene_biotype
   resultat[[paste0("Class",test)]] = "Exonic";
-  
-  AllExons = exonsByTranscripts[c(TElement$transcript_id)]
+  AllExons = reduce(exonsByGenes[[geneID]]);
   if(strand == "-"){
     AllExons = sort(AllExons, decreasing = TRUE);
   }else{
     AllExons = sort(AllExons); 
   }
-  ranks = lapply(AllExons, FUN = function(x){return(subjectHits(findOverlaps(GRElement, x)))})
-  resultat[[paste0("Element",test)]] = paste(names(AllExons), ranks, collapse = ",", sep="@")
-  resultat[[paste0("Rank",test)]] = paste0(ranks, collapse = ",");
-
+  resultat[[paste0("Rank",test)]] = subjectHits(findOverlaps(GRElement, AllExons));
+  resultat[[paste0("Element",test)]] = paste0("Exon", resultat[[paste0("Rank",test)]]);
   return(resultat);
 }
 
@@ -272,23 +264,18 @@ separateTxFromStAndChr = function(genes){
 #################################### END FONCTIONS  ###############################################
 ###################################################################################################
 
-#On importe le GTF
-input = import(gtf);
-
 if(!file.exists("./Rsave/introns.rds")){
   dir.create("./Rsave/")
   print("Objects Construction...")
 #On initialise ensembl a NULL si jamais aucun dataSet n'est donné pour biomaRt
  ensembl = NULL;
 
-# input = import(gtf);
-
-
-#On récupère les annotation BiomaRt SI un dataSet bioMart a été indiquer
+#On importe le GTF
+ input = import(gtf);
+ #On récupère les annotation BiomaRt SI un dataSet bioMart a été indiquer
  
- # On détermine a quel type va traiter si il y a requête biomaRt
- IdType = list(RefSeq = "entrezgene", Ensembl = "ensembl_gene_id")
- 
+# input = input[1:2000,];
+
  if(!is.null(opt$biomaRtDataSet)){
       ensembl = useMart("ensembl",dataset=as.character(opt$biomaRtDataSet));
  }
@@ -323,32 +310,30 @@ if(!file.exists("./Rsave/introns.rds")){
  genes = unlist(genes)
  genes$gene_id = names(genes)
  
+ print("BiomaRt Construction ...")
+ 
  if(!is.null(opt$biomaRtDataSet)){
-   
-   print("BiomaRt Construction ...")
-   # On récupère le nom du champ associé au type d'ID dans le GTF
-   idToRequest = IdType[[idBDD]]
-   
+ 
  #GENE SYMBOL
      myDataGeneID = as.data.frame(sapply(strsplit(x = genes$gene_id, split = "[.]"), '[', 1));
-     colnames(myDataGeneID) = "geneID";
+     colnames(myDataGeneID) = "entrezgene";
      #biomaRt
-     biomartGeneSymbol = biomaRt::getBM(attributes=c(idToRequest, 'hgnc_symbol'), filters = idToRequest, values = myDataGeneID$geneID, mart = ensembl) 
+     biomartGeneSymbol = biomaRt::getBM(attributes=c('entrezgene', 'hgnc_symbol'), filters ='entrezgene', values = myDataGeneID$entrezgene, mart = ensembl) 
      biomartGeneSymbol <- data.frame(lapply(biomartGeneSymbol, as.character), stringsAsFactors = TRUE);
-     colnames(biomartGeneSymbol) = c("geneID", "hgnc_symbol")
+     colnames(biomartGeneSymbol) = c("entrezgene", "hgnc_symbol")
      #filterResults car biomaRt peut renvoyer plusieurs résultata pour un même id, on prend le premier
-     biomartGeneSymbol = biomartGeneSymbol[!duplicated(biomartGeneSymbol$geneID), ]
-     output = dplyr::left_join(myDataGeneID, as.data.frame(biomartGeneSymbol), by = "geneID")
+     biomartGeneSymbol = biomartGeneSymbol[!duplicated(biomartGeneSymbol$entrezgene), ]
+     output = dplyr::left_join(myDataGeneID, as.data.frame(biomartGeneSymbol), by = "entrezgene")
      #On associe les identifiants
      genes$gene_symbol = output$hgnc_symbol;
  
  #GENE BIOTYPE
-     biomartGeneBiotype = biomaRt::getBM(attributes=c(idToRequest, 'gene_biotype'), filters =idToRequest, values = myDataGeneID$geneID, mart = ensembl) 
+     biomartGeneBiotype = biomaRt::getBM(attributes=c('entrezgene', 'gene_biotype'), filters ='entrezgene', values = myDataGeneID$entrezgene, mart = ensembl) 
      biomartGeneBiotype <- data.frame(lapply(biomartGeneBiotype, as.character), stringsAsFactors = TRUE);
-     colnames(biomartGeneBiotype) = c("geneID", "gene_biotype");
+     colnames(biomartGeneBiotype) = c("entrezgene", "gene_biotype");
      #filterResults car biomaRt peut renvoyer plusieurs résultata pour un même id, on prend le premier
-     biomartGeneBiotype = biomartGeneBiotype[!duplicated(biomartGeneBiotype$geneID), ]
-     output <-  dplyr::left_join(myDataGeneID, as.data.frame(biomartGeneBiotype), by = "geneID")
+     biomartGeneBiotype = biomartGeneBiotype[!duplicated(biomartGeneBiotype$entrezgene), ]
+     output <-  dplyr::left_join(myDataGeneID, as.data.frame(biomartGeneBiotype), by = "entrezgene")
      #On associe les identifiants
      genes$gene_biotype = output$gene_biotype;
  }else{
@@ -417,8 +402,6 @@ if(!file.exists("./Rsave/introns.rds")){
 print("Begin Annotation of candidates ....") 
 confidenceWindow = 0; 
 
-chrList = as.character(levels(seqnames(input)))
-
 data = read.table(mergeTable, header = TRUE, sep = "\t", comment.char = "");
 
 AllTranscriptWithoutStrandWithIds = transcripts
@@ -427,36 +410,19 @@ strand(AllTranscriptWithoutStrandWithIds) = "*"
 class = TranscriptIds = GeneId = GeneSymbol = GeneBioType = ElementStart = ElementEnd = StartRank = EndRank = ExactMatch = ExactMatchIds = c();
  # On parcours chaque ligne de fichier dans l'ordre et on ajoute les annotations dans l'ordre
  for(i in 1:nrow(data)){
-  
-     if(data[i,]$Chromosome %in% chrList){
-     
-     myAnnotation = annotate(data[i,]$Start, data[i,]$End, as.character(data[i,]$Chromosome), as.character(data[i,]$Strand));
-     class = c(class, myAnnotation[["Class"]])
-     TranscriptIds = c(TranscriptIds, myAnnotation[["TranscriptIds"]]);
-     GeneId = c(GeneId, concatRes(myAnnotation[["GeneId"]]));
-     GeneSymbol = c(GeneSymbol, concatRes(myAnnotation[["GeneSymbol"]]));
-     GeneBioType = c(GeneBioType, concatRes(myAnnotation[["GeneBioType"]]));
-     ElementStart = c(ElementStart, concatRes(myAnnotation[["ElementStart"]]));
-     ElementEnd = c(ElementEnd, concatRes(myAnnotation[["ElementEnd"]]));
-     StartRank = c(StartRank, concatRes(myAnnotation[["RankStart"]]));
-     EndRank = c(EndRank, concatRes(myAnnotation[["RankEnd"]]));
-     ExactMatch = c(ExactMatch, myAnnotation[["ExactMatch"]]);
-     ExactMatchIds = c(ExactMatchIds, concatRes(myAnnotation[["ExactMatchTxIds"]]));
-
-  }else{
-    
-    class = c(class, "NoAnnotationAvailable")
-    TranscriptIds = c(TranscriptIds, "")
-    GeneId = c(GeneId, "")
-    GeneSymbol = c(GeneSymbol, "")
-    GeneBioType = c(GeneBioType, "")
-    ElementStart = c(ElementStart, "")
-    ElementEnd = c(ElementEnd, "")
-    StartRank = c(StartRank, "")
-    EndRank = c(EndRank, "")
-    ExactMatch = c(ExactMatch, "")
-    ExactMatchIds = c(ExactMatchIds, "")
-  }
+  # print(i)
+  myAnnotation = annotate(data[i,]$Start, data[i,]$End, as.character(data[i,]$Chromosome), as.character(data[i,]$Strand));
+  class = c(class, myAnnotation[["Class"]])
+  TranscriptIds = c(TranscriptIds, myAnnotation[["TranscriptIds"]]);
+  GeneId = c(GeneId, concatRes(myAnnotation[["GeneId"]]));
+  GeneSymbol = c(GeneSymbol, concatRes(myAnnotation[["GeneSymbol"]]));
+  GeneBioType = c(GeneBioType, concatRes(myAnnotation[["GeneBioType"]]));
+  ElementStart = c(ElementStart, concatRes(myAnnotation[["ElementStart"]]));
+  ElementEnd = c(ElementEnd, concatRes(myAnnotation[["ElementEnd"]]));
+  StartRank = c(StartRank, concatRes(myAnnotation[["RankStart"]]));
+  EndRank = c(EndRank, concatRes(myAnnotation[["RankEnd"]]));
+  ExactMatch = c(ExactMatch, myAnnotation[["ExactMatch"]]);
+  ExactMatchIds = c(ExactMatchIds, concatRes(myAnnotation[["ExactMatchTxIds"]]));
 }
 
 data$Class = class;

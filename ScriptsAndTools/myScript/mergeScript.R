@@ -1,5 +1,5 @@
 library("optparse");
-library("BSgenome.Hsapiens.UCSC.hg38"); 
+# library("BSgenome.Hsapiens.UCSC.hg38"); 
 library("Biostrings");
 library("GenomicFeatures");
 library("rtracklayer");
@@ -18,7 +18,9 @@ option_list = list(
   make_option(c("--condition"), type = "character", default = NULL,
               help="circRNA candidates from findCirc", metavar="character"),
   make_option(c("--outputPath"), type = "character", default = NULL,
-              help="Path for output file", metavar="character")
+              help="Path for output file", metavar="character"),
+  make_option(c("--packageName"), type = "character", default = NULL,
+              help="packageName for genome", metavar="character")
 ); 
 opt_parser = OptionParser(option_list=option_list);
 opt = parse_args(opt_parser);
@@ -54,10 +56,12 @@ condition = as.character(opt$condition);
 
 # condition = "Senescence"
 path = as.character(opt$outputPath);
-# path = "./Janvier2014/Senescence/"
+packageNameGenome = as.character(opt$packageName);
+# Load Pipemade package for genome
+library(packageNameGenome, character.only = TRUE)
 
 #Variable globale
-genome <- getBSgenome("hg38");
+genome <- getBSgenome(packageNameGenome);
 
 dataCircExplorer2 = read.table(opt$circExplorer2, header = TRUE, sep = "\t", comment.char = "");
 # dataCircExplorer2 = read.table("./Janvier2014/Senescence/SEN_L1_back_spliced_junction_withHeaders.bed", header = TRUE, sep = "\t");

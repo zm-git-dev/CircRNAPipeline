@@ -1,0 +1,12 @@
+rule runHtSeqCount:
+	input:
+		SAMFILE="{replicat}/{condition}/AlignementStarWithChimeric/{sample}_Aligned.out.sam"
+	params:
+		GTF=config["ANNOTATION"]["PATH"],
+		tmpSAM="{replicat}/{condition}/AlignementStarWithChimeric/{sample}_AlignedWithoutSoftClipped.sam"
+	output:
+		HtSeqCountOutput="{replicat}/{condition}/Global_results/{sample}{condition}_htSeqCount.txt",
+	run:
+		shell("samtools view -h -F4 {input.SAMFILE} | awk '$6 !~ /H|S/{{print $0}}' > {params.tmpSAM} ")
+		shell("htseq-count --stranded=yes --type=gene --idattr=gene_id --nonunique=all --secondary-alignments=ignore --quiet {params.tmpSAM} {params.GTF} > {output.HtSeqCountOutput}"),
+		shell(" rm {params.tmpSAM}")

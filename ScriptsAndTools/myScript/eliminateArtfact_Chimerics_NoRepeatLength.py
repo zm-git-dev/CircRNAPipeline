@@ -6,7 +6,7 @@ import commands
 def getFIlesInuput(argv):
 	output={'ChimericFile': '', 'out': ''}
 	try:
-		opts, args = getopt.getopt(argv, "c:o:")
+		opts, args = getopt.getopt(argv, "i:c:o:")
 	except getopt.GetoptError:
 		sys.exit(2)
 	for opt, arg in opts:

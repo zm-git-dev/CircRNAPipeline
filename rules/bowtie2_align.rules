@@ -11,9 +11,9 @@ rule bowtie2_aln:
 	output: "{replicat}/{condition}/AlignementBowtie2/{sample}_sorted.bam"
 	params:
 		BASENAME=config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"],
-		STRAND_OPTION=config["ALIGNEMENT"]["bowtie2"]["STRAND"]
+		THREADS=config["ALIGNEMENT"]["bowtie2"]["THREAD"]
 	shell:
-		 "bowtie2 -p16 --very-sensitive --score-min=C,-15,0 --mm -x {params.BASENAME} -q -U {input.FASTQ}  2> bowtie2.log | samtools view -hbuS | samtools sort -o {output} "
+		 "bowtie2 -p {params.THREADS} --very-sensitive --score-min=C,-15,0 --mm -x {params.BASENAME} -q -U {input.FASTQ}  2> bowtie2.log | samtools view -hbuS | samtools sort -o {output} "
 
 
 #-very--sensitive : c'est le nmbre de tentative d'alignement ( opposé a very-fast où on tante pas beaucoup
