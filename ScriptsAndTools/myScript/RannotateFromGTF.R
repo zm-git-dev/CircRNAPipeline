@@ -54,85 +54,167 @@ idBDD = as.character(opt$idBDD);
 ###################################################################################################
 
 
+TableOfClass = list("1" = "Exonic", "2" = "Intronic", "11" = "AntisensExonic", "12" = "AntisensIntronic", "0" = "Intergenic")
+
+newAnnotateGR = function(GR, test, strand, resultat, AllGenesM){
+  # On recherche tout les gènes mappant peut importe le brin afin de connaitre TOUT les transcripts et tout les gènes, ensuite on découpera l'analyse spécifiquement pour ceux ayant le même brin ou les autres
+  Genes = genes[genes$gene_id %in% AllGenesM, ]
+  if(length(Genes) > 0){
+  
+  Tx = transcripts[subjectHits(findOverlaps(GR, transcripts)),]
+  
+  resultat[[paste0("TranscriptIds", test)]] = Tx$transcript_id
+  V_ElementLocus = V_ELementTx = V_ExactMatch = V_ExactMatchTxIds = V_Class = c()
+      
+      for(i in (1:length(Genes))){
+          gene = Genes[i,]$gene_id
+          PreviousV_Element_Strand = computeAnnotation(GR, gene, exonsByGenes, intronsInGenes, "@E", "@I", genes, TRUE, strand, 0)
+          PreviousV_Element_Unstrand =   computeAnnotation(GR, gene, exonsByGenes, intronsInGenes, "@AE", "@AI", genes, TRUE, ifelse(strand == "+", "-", "+"), 10)
+          
+          PreviousV_Element = c(PreviousV_Element_Strand$Element, PreviousV_Element_Unstrand$Element)
+          V_ElementLocus = c(V_ElementLocus, ifelse(length(PreviousV_Element) > 0, yes = PreviousV_Element, no = "NA"))
+          
+          V_Class = c(V_Class, (PreviousV_Element_Strand$Class + PreviousV_Element_Unstrand$Class))
+          
+          TxForGene_i = Tx[Tx$gene_id == gene,]          
+          for(transcript in TxForGene_i$transcript_id){
+            PreviousV_Element = c(computeAnnotation(GR, transcript, exonsByTranscripts, intronsInTranscripts, "@E", "@I", transcripts, FALSE, strand, 0)$Element,
+                                  computeAnnotation(GR, transcript, exonsByTranscripts, intronsInTranscripts, "@AE", "@AI", transcripts, FALSE, ifelse(strand == "+", "-", "+"), 10)$Element)
+            
+            V_ELementTx = c(V_ELementTx, ifelse(length(PreviousV_Element) > 0, yes = PreviousV_Element, no = "NA"))
+            
+          }
+          TxKeepedExactMatchBool = testIfExactMatch(TxForGene_i, GR, test)
+          V_ExactMatch = c(V_ExactMatch, ifelse(sum(TxKeepedExactMatchBool) != 0, TRUE, FALSE))
+          V_ExactMatchTxIds = c(V_ExactMatchTxIds, TxForGene_i[TxKeepedExactMatchBool, ]$transcript_id)
+      }
+      V_Class = as.vector(unlist(TableOfClass[as.character(V_Class)]))
+      
+  resultat[[paste0("ElementLocus",test)]] = V_ElementLocus
+  resultat[[paste0("ElementTranscripts",test)]] = V_ELementTx
+  resultat[[paste0("Class",test)]] = V_Class
+  resultat[[paste0("ExactMatch",test)]] = V_ExactMatch
+  resultat[[paste0("ExactMatchTxIds",test)]] = V_ExactMatchTxIds
+  
+  }else{
+    return(annotateIntergenic(resultat, test))
+  }
+  
+  return(resultat)
+}
+
+
+# idToBrowse: Les ids de gènes ou de Tx
+# ExonsByX: exonsBygenes ou exonsBytx
+# IntronsByX: pareil
+# sepForExons et sepForIntrons: les @...
+#: GenomicElementTable Genes ou Transcripts
+computeAnnotation = function(GR, idToBrowse, ExonsByX, IntronsByX, sepForExons, sepForIntrons, GenomicElementTable, BoolGene, strand, factor){
+  
+  V_New_Element = NULL
+  V_Class = 0
+  strand(GR) = strand
+  ids = idToBrowse
+    GenomicElement = NULL;
+    if(BoolGene){
+      GenomicElement = GenomicElementTable[GenomicElementTable$gene_id == ids,]
+    }else{
+      GenomicElement = GenomicElementTable[GenomicElementTable$transcript_id == ids,]
+    }
+    Exons = sort(ExonsByX[[ids]] %>% reduce(), decreasing = (as.character(strand(GenomicElement)) == "-"))
+    introns = IntronsByX[[ids]]
+    
+    if(length(subjectHits(findOverlaps(GR, Exons))) > 0){
+      V_New_Element = paste(ids, subjectHits(findOverlaps(GR, Exons)), collapse = ",", sep = sepForExons )
+      V_Class = V_Class + 1 + factor
+    }else if(!is.null(introns)){
+      # Car un exon peut être constitué d'un seul exons et ne pas avoir d'introns
+      if(length(subjectHits(findOverlaps(GR,introns))) > 0){
+        V_New_Element = paste(ids, introns[subjectHits(findOverlaps(GR,introns)),]$intron_id , collapse = ",", sep = sepForIntrons )
+        V_Class = V_Class + 2 + factor
+      }
+    }
+  return(list(Element = V_New_Element, Class = V_Class))
+}
+
 
 # Annota est la méthode qui va permettre d'obtenir une annotation en start et en End (on ne peut pas vraiment savoir ce qu'il y a au milieu du circRNA) ensuite on merge les résultat des annot start et end
-annotate = function(start, end, chr, strand){
+annotate = function(dataLine, annotateData){
+  start = dataLine$Start
+  end = dataLine$End
+  chr = as.character(dataLine$Chromosome)
+  strand = as.character(dataLine$Strand)
+  
   resultat = list();
   # On crée des GR initialement sans brin (pour les cas antisens)
   GRStartWithoutStrand = GRanges(seqnames = chr, ranges = IRanges(start+1, start+2+confidenceWindow),strand = "*")
   GREndWithoutStrand = GRanges(seqnames = chr, ranges = IRanges(end-1-confidenceWindow, end),strand = "*");
-  resultat = annotateGR(GRStartWithoutStrand, "Start", strand, resultat);
-  resultat = annotateGR(GREndWithoutStrand, "End", strand, resultat);
+  
+  AllGenesM = base::union(genes[subjectHits(findOverlaps(GRStartWithoutStrand, genes)),]$gene_id, genes[subjectHits(findOverlaps(GREndWithoutStrand, genes)),]$gene_id)
+  resultat = newAnnotateGR(GRStartWithoutStrand, "Start", strand, resultat, AllGenesM);
+  resultat = newAnnotateGR(GREndWithoutStrand, "End", strand, resultat, AllGenesM);
   resultat[is.na(resultat)] = ""
-  resultat = mergeResultat(resultat);
-  return(resultat);
-}
+  Genes = genes[genes$gene_id %in% AllGenesM, ]
+  
+  nbGenes = ifelse(length(AllGenesM) > 0, length(AllGenesM), 1)
+  
+  newDataAnnotate = dataLine[rep(1, nbGenes),]
+  newDataAnnotate$Class = resumeAnnotationFactor(resultat, "Class", "-")
+  newDataAnnotate$TranscriptIds = resumeAllAnnotationFactor(resultat, "TranscriptIds", ",")
+  newDataAnnotate$GeneId = paste0(Genes$gene_id, "")
+  newDataAnnotate$GeneSymbol = paste0(Genes$gene_symbol, "")
+  newDataAnnotate$GeneBioType = paste0(Genes$gene_biotype, "")
+  newDataAnnotate$ElementLocusStart = resultat[["ElementLocusStart"]]
+  newDataAnnotate$ElementLocusEnd = resultat[["ElementLocusEnd"]]
+  newDataAnnotate$ElementTranscriptsStart = concatRes(resultat[["ElementTranscriptsStart"]], ",")
+  newDataAnnotate$ElementTranscriptsEnd = concatRes(resultat[["ElementTranscriptsEnd"]], ",")
+  newDataAnnotate$ExactMatch =  resultat[["ExactMatchStart"]] & resultat[["ExactMatchEnd"]]
+  newDataAnnotate$ExactMatchIds = resumeAllAnnotationFactor(resultat, "ExactMatchTxIds", ",")
 
-concatRes = function(element){
-  return(paste0(element, sep="", collapse = ','));
+  annotateData = rbind(annotateData, newDataAnnotate)
+  
+  return(annotateData);
 }
 
 
 mergeResultat = function(resultat){
-  resultat = getCommonAnnotationForList(resultat, "TranscriptIds");
-  resultat = getCommonAnnotation(resultat, "Class");
-  resultat = getCommonAnnotation(resultat, "GeneId");
-  resultat = getCommonAnnotation(resultat, "GeneSymbol");
-  resultat = getCommonAnnotation(resultat, "GeneBioType");
-  resultat = getCommonAnnotationForList(resultat, "ExactMatchTxIds");
+  
+  # resultat[[paste0("GeneId",test)]] = Genes$gene_id
+  # resultat[[paste0("GeneSymbol",test)]] = Genes$gene_symbol
+  # resultat[[paste0("GeneBioType",test)]] = Genes$gene_biotype
+  
+  
+  resultat = resumeAnnotationFactor(resultat, "TranscriptIds");
+  resultat = resumeAnnotationFactor(resultat, "Class");
+  resultat = resumeAnnotationFactor(resultat, "GeneId");
+  resultat = resumeAnnotationFactor(resultat, "GeneSymbol");
+  resultat = resumeAnnotationFactor(resultat, "GeneBioType");
+  resultat = resumeAnnotationFactor(resultat, "ExactMatchTxIds");
   resultat[["ExactMatch"]] = resultat[["ExactMatchStart"]] & resultat[["ExactMatchEnd"]]
   return(resultat);
 }
 
-# On recherche les annotation communes entre start et end pour éviter la redondance
-getCommonAnnotationForList = function(resultat, factor){
-  if(!setequal(resultat[[paste0(factor,"Start")]], resultat[[paste0(factor,"End")]])){
-    if(resultat[["GeneIdStart"]] == resultat[["GeneIdEnd"]]){
-      resultat[[factor]] = concatRes(base::intersect(resultat[[paste0(factor,"Start")]], resultat[[paste0(factor,"End")]])) #Si il s'agit de même gène alors on fait l'intersection
-      # resultat[[factor]] = concatRes(unique(append(resultat[[paste0(factor,"Start")]], resultat[[paste0(factor,"End")]])))
-    }else{
-      resultat[[factor]] = paste0("Start:", concatRes(resultat[[paste0(factor,"Start")]]),"||End:", concatRes(resultat[[paste0(factor,"End")]]));
-    } 
-  }else{
-    resultat[[factor]] = concatRes(resultat[[paste0(factor,"Start")]]);
+
+
+#Ici on fait par élement pour les gènes distinct d'une même jinction: Class, gene_id, ...
+resumeAnnotationFactor = function(resultat, factor, separateur){
+  merging = c()
+  for(i in 1:length(resultat[[paste0(factor,"Start")]])){
+    merging = c(merging, concatRes(base::union(resultat[[paste0(factor,"Start")]][i], resultat[[paste0(factor,"End")]][i]), separateur))
   }
-  return(resultat);
+  return(merging)
+  }
+
+#Ici on fait le global peut importe donc on fait la totale, notamment pour Transcripts, ..
+resumeAllAnnotationFactor = function(resultat, factor, separateur){
+  merging = concatRes(base::union(resultat[[paste0(factor,"Start")]], resultat[[paste0(factor,"End")]]), separateur)
+  return(merging)
 }
 
-# On recherche les annotation communes entre start et end pour éviter la redondance
-getCommonAnnotation = function(resultat, factor){
-  if(resultat[[paste0(factor,"Start")]] != resultat[[paste0(factor,"End")]]){
-    resultat[[factor]] = paste0("Start:", resultat[[paste0(factor,"Start")]],"||End:", resultat[[paste0(factor,"End")]]);
-  }else{
-    resultat[[factor]] = resultat[[paste0(factor,"Start")]];
-  }
-  return(resultat);
+concatRes = function(element, separateur){
+  return(paste0(element, sep="", collapse = separateur));
 }
 
-# Permet de réaliser une suite de Tests pour annoter Si on mappe un Gène sans brin alors il est soit "exonic" ou "intronic" ou "antisens" sinon c'est "intergenic"
-annotateGR = function(GR, test, strand, resultat){
-  GeneOverloap = findOverlaps(GR, AllTranscriptWithoutStrandWithIds);
-  if(length(GeneOverloap) > 0){
-    strand(GR) = strand;
-    TElementTest = findOverlaps(GR, exonsByTranscripts);
-    TElement = transcripts[which(transcripts$transcript_id %in% names(exonsByTranscripts[subjectHits(TElementTest), ])), ];
-    IntronsTest = findOverlaps(GR, introns);
-    if(length(TElement) != 0){
-      resultat = annotateTranscript(TElement, GR, strand, resultat, test);
-      return(resultat);
-    }else if(length(IntronsTest) > 0){
-      resultat = annotateIntrons(GR, IntronsTest, strand, resultat, test);
-      return(resultat);
-    }else{
-      resultat =  annotateAntinsens(GR, strand, resultat, test);
-      return(resultat)
-    }
-    
-  }else{
-    resultat = annotateIntergenic(resultat, test);
-    return(resultat);
-  }
-}
 
 
 testIfExactMatch = function(GROverlapTx, GRElement, test){
@@ -152,72 +234,48 @@ testIfExactMatch = function(GROverlapTx, GRElement, test){
 #Annotation pour les position Intergéniques
 annotateIntergenic = function(resultat, test){
   resultat[[paste0("Class",test)]] = "Intergenic";
-  resultat[[paste0("TranscriptIds", test)]] = resultat[[paste0("GeneId",test)]] = resultat[[paste0("GeneSymbol",test)]] = resultat[[paste0("GeneBioType",test)]] = resultat[[paste0("Rank",test)]] = resultat[[paste0("Element",test)]] = resultat[[paste0("ExactMatchTxIds", test)]] = "";
+  resultat[[paste0("TranscriptIds", test)]] = resultat[[paste0("GeneId",test)]] = resultat[[paste0("GeneSymbol",test)]] = resultat[[paste0("GeneBioType",test)]] = resultat[[paste0("ElementLocus",test)]] = resultat[[paste0("ElementTranscripts",test)]] = resultat[[paste0("ElementLocus", test)]] = resultat[[paste0("ElementTranscripts", test)]] = resultat[[paste0("ExactMatchTxIds", test)]] = "";
   resultat[[paste0("ExactMatch", test)]] = FALSE
   return(resultat);
 }
 
-# Annotation pour les antisens
-annotateAntinsens = function(GRGene, strand, resultat, test){
-        resultat = annotateGR(GRGene, test, ifelse(strand == "+", "-", "+"), resultat)
-        resultat[[paste0("Class",test)]] = "Antinsens";
-        return(resultat)
-}
 
-#Annotation pour les introns
-# ATTENTION a cause des pseudogène (appartenant a un même gène mais situé a des positions très différente il perturbe et donne de fausse reconstruction de Locus) donc on va tout de même vérifier pour les introns que l'on match bien entre le start et le end d'un transcrit
-annotateIntrons = function(GR, IntronsTest, strand, resultat, test){
-  #On révupère tout les introns matchant
-  myIntrons = introns[subjectHits(IntronsTest), ];
-    geneID = myIntrons$gene_id[1];
-    resultat[[paste0("GeneId",test)]] = geneID
-    resultat[[paste0("TranscriptIds", test)]] = transcripts[subjectHits(findOverlaps(GR, transcripts)), ]$transcript_id;
-    resultat[[paste0("Class",test)]] = "Intronic";
-    resultat[[paste0("GeneSymbol",test)]] = genes[genes$gene_id == geneID]$gene_symbol
-    resultat[[paste0("GeneBioType",test)]] = genes[genes$gene_id == geneID]$gene_biotype
-    resultat[[paste0("Rank",test)]] = myIntrons$intron_id;
-    resultat[[paste0("Element",test)]] =  paste0("Intron", myIntrons$intron_id);
-    resultat[[paste0("ExactMatch", test)]] = FALSE
-    resultat[[paste0("ExactMatchTxIds", test)]] = ""
-    return(resultat);
-}
-
-# Annotation pour les transcrit sur des match exoniques
-annotateTranscript = function(TElement, GRElement, strand, resultat, test){
-  #Doc Cf annotateAntisens
-  TxKeepedExactMatchBool = testIfExactMatch(TElement, GRElement, test)
-  TxExactMatch = TElement[TxKeepedExactMatchBool, ]
-  resultat[[paste0("ExactMatch", test)]] = ifelse(sum(TxKeepedExactMatchBool) != 0, TRUE, FALSE)
-  resultat[[paste0("ExactMatchTxIds", test)]] = TxExactMatch$transcript_id
-  
-  resultat[[paste0("TranscriptIds", test)]] = TElement$transcript_id
-  geneID = as.character(TElement[1,]$gene_id[1]);
-  resultat[[paste0("GeneId",test)]] = geneID;
-  resultat[[paste0("GeneSymbol",test)]] = genes[genes$gene_id == geneID]$gene_symbol
-  resultat[[paste0("GeneBioType",test)]] = genes[genes$gene_id == geneID]$gene_biotype
-  resultat[[paste0("Class",test)]] = "Exonic";
-  
-  AllExons = exonsByTranscripts[c(TElement$transcript_id)]
-  if(strand == "-"){
-    AllExons = sort(AllExons, decreasing = TRUE);
-  }else{
-    AllExons = sort(AllExons); 
+# Crée un objet GRanges représentant les introns à paritr des coordonnées des exons de chaque Transcripts
+getIntronsInTranscripts  = function(exonsByTranscripts, transcripts){
+  GRIntrons = GRanges();
+  for(txName in names(exonsByTranscripts)){
+    exons <- exonsByTranscripts[[txName]] %>% sort();
+    mcols(exons) = NULL
+    if(length(exons) > 1){
+      currentGRTx = GRanges(seqnames=seqnames(exons)[1], ranges=IRanges(start=min(start(exons)), end=max(end(exons))), strand=strand(exons)[1])  
+      db = disjoin(c(exons, currentGRTx));
+      ints = db[countOverlaps(db, exons) == 0]
+      #Add an ID
+      if(length(ints) > 0){
+        if(as.character(strand(currentGRTx)) == "-") {
+          ints$intron_id = c(length(ints):1)
+        } else {
+          ints$intron_id = c(1:length(ints))
+        }
+        
+        ints$transcript_id = txName
+        ints$gene_id = as.character(transcripts[transcripts$transcript_id == txName,]$gene_id)
+        GRIntrons = append(GRIntrons, ints);
+      }  
+    }
   }
-  ranks = lapply(AllExons, FUN = function(x){return(subjectHits(findOverlaps(GRElement, x)))})
-  resultat[[paste0("Element",test)]] = paste(names(AllExons), ranks, collapse = ",", sep="@")
-  resultat[[paste0("Rank",test)]] = paste0(ranks, collapse = ",");
-
-  return(resultat);
+  return(GRIntrons);
 }
+
 
 
 # Crée un objet GRanges représentant les introns à paritr des coordonnées des exons de chaque Locus
-getIntrons  = function(exonsByGenes, genes){
+getIntronsInGenes  = function(exonsByGenes, genes){
   GRIntrons = GRanges();
   for(geneName in names(exonsByGenes)){
     exons <- exonsByGenes[[geneName]] %>% reduce() %>% sort();
     if(length(exons) > 1){
-      currentGRgene = GRanges(seqnames=seqnames(exons)[1], ranges=IRanges(start=min(start(exons)), end=max(end(exons))), strand=strand(exons)[1])  
+      currentGRgene = GRanges(seqnames=seqnames(exons)[1], ranges=IRanges(start=min(start(exons)), end=max(end(exons))), strand=strand(exons)[1])
       db = disjoin(c(exons, currentGRgene));
       ints = db[countOverlaps(db, exons) == 0]
       #Add an ID
@@ -227,15 +285,16 @@ getIntrons  = function(exonsByGenes, genes){
         } else {
           ints$intron_id = c(1:length(ints))
         }
-        
+
         ints$gene_id = geneName
         ints$symbol = genes[genes$gene_id == geneName,]$gene_symbol;
         GRIntrons = append(GRIntrons, ints);
-      }  
+      }
     }
   }
   return(GRIntrons);
 }
+
 
 
 separateTxFromStAndChr = function(genes){
@@ -275,7 +334,7 @@ separateTxFromStAndChr = function(genes){
 #On importe le GTF
 input = import(gtf);
 
-if(!file.exists("./Rsave/introns.rds")){
+if(!file.exists("./Rsave/intronsInGenes.rds")){
   dir.create("./Rsave/")
   print("Objects Construction...")
 #On initialise ensembl a NULL si jamais aucun dataSet n'est donné pour biomaRt
@@ -372,9 +431,6 @@ if(!file.exists("./Rsave/introns.rds")){
  transcripts$gene_id = geneIDForTranscripts
  
  
- 
-
- 
  ###############################  EXONS BY TRANSCRITS  ###################################################
  print("exonsByTranscripts Construction ...")
  
@@ -384,8 +440,10 @@ if(!file.exists("./Rsave/introns.rds")){
  genesWithoutStrand = genes[,NULL]
  strand(genesWithoutStrand) = "*"
 
- introns = getIntrons(exonsByGenes, genes);
- 
+ # Pour les introns, on prend le même format que pour les exons
+ intronsInTranscripts = getIntronsInTranscripts(exonsByTranscripts, transcripts);
+ intronsInGenes = getIntronsInGenes(exonsByGenes, genes);
+
  
  saveRDS(object = exons, file = "./Rsave/exons.rds")
  saveRDS(object = genes, file = "./Rsave/genes.rds")
@@ -393,8 +451,8 @@ if(!file.exists("./Rsave/introns.rds")){
  saveRDS(object = exonsByGenes, file = "./Rsave/exonsByGenes.rds")
  saveRDS(object = exonsByTranscripts, file = "./Rsave/exonsByTranscripts.rds")
  saveRDS(object = genesWithoutStrand, file = "./Rsave/genesWithoutStrand.rds")
- saveRDS(object = introns, file = "./Rsave/introns.rds")
- 
+ saveRDS(object = intronsInTranscripts, file = "./Rsave/intronsInTranscripts.rds")
+ saveRDS(object = intronsInGenes, file = "./Rsave/intronsInGenes.rds")
 
 }else{
  
@@ -407,13 +465,16 @@ if(!file.exists("./Rsave/introns.rds")){
  exonsByGenes = readRDS("./Rsave/exonsByGenes.rds");
  exonsByTranscripts = readRDS("./Rsave/exonsByTranscripts.rds");
  genesWithoutStrand = readRDS("./Rsave/genesWithoutStrand.rds");
- introns = readRDS("./Rsave/introns.rds");
-
+ intronsInTranscripts = readRDS("./Rsave/intronsInTranscripts.rds");
+ intronsInGenes = readRDS("./Rsave/intronsInGenes.rds");
 
  #####################################  ANNOTATION  ######################################################
 
 } 
- 
+
+intronsInTranscripts = split(intronsInTranscripts, intronsInTranscripts$transcript_id); 
+intronsInGenes = split(intronsInGenes, intronsInGenes$gene_id);
+
 print("Begin Annotation of candidates ....") 
 confidenceWindow = 0; 
 
@@ -421,59 +482,23 @@ chrList = as.character(levels(seqnames(input)))
 
 data = read.table(mergeTable, header = TRUE, sep = "\t", comment.char = "");
 
-AllTranscriptWithoutStrandWithIds = transcripts
-strand(AllTranscriptWithoutStrandWithIds) = "*"
-
-class = TranscriptIds = GeneId = GeneSymbol = GeneBioType = ElementStart = ElementEnd = StartRank = EndRank = ExactMatch = ExactMatchIds = c();
- # On parcours chaque ligne de fichier dans l'ordre et on ajoute les annotations dans l'ordre
- for(i in 1:nrow(data)){
+completeAnnotation = function(data, chrList){
   
-     if(data[i,]$Chromosome %in% chrList){
-     
-     myAnnotation = annotate(data[i,]$Start, data[i,]$End, as.character(data[i,]$Chromosome), as.character(data[i,]$Strand));
-     class = c(class, myAnnotation[["Class"]])
-     TranscriptIds = c(TranscriptIds, myAnnotation[["TranscriptIds"]]);
-     GeneId = c(GeneId, concatRes(myAnnotation[["GeneId"]]));
-     GeneSymbol = c(GeneSymbol, concatRes(myAnnotation[["GeneSymbol"]]));
-     GeneBioType = c(GeneBioType, concatRes(myAnnotation[["GeneBioType"]]));
-     ElementStart = c(ElementStart, concatRes(myAnnotation[["ElementStart"]]));
-     ElementEnd = c(ElementEnd, concatRes(myAnnotation[["ElementEnd"]]));
-     StartRank = c(StartRank, concatRes(myAnnotation[["RankStart"]]));
-     EndRank = c(EndRank, concatRes(myAnnotation[["RankEnd"]]));
-     ExactMatch = c(ExactMatch, myAnnotation[["ExactMatch"]]);
-     ExactMatchIds = c(ExactMatchIds, concatRes(myAnnotation[["ExactMatchTxIds"]]));
-
-  }else{
+  annotatedData = data.frame()
+  
+  for(i in 1:nrow(data)){
     
-    class = c(class, "NoAnnotationAvailable")
-    TranscriptIds = c(TranscriptIds, "")
-    GeneId = c(GeneId, "")
-    GeneSymbol = c(GeneSymbol, "")
-    GeneBioType = c(GeneBioType, "")
-    ElementStart = c(ElementStart, "")
-    ElementEnd = c(ElementEnd, "")
-    StartRank = c(StartRank, "")
-    EndRank = c(EndRank, "")
-    ExactMatch = c(ExactMatch, "")
-    ExactMatchIds = c(ExactMatchIds, "")
-  }
+    if(data[i,]$Chromosome %in% chrList){
+      
+      annotatedData = annotate(data[i,], annotatedData)
+      
+      }
+  
+    }
+  return(annotatedData)
 }
 
-data$Class = class;
-data$TranscriptIds = TranscriptIds;
-data$GeneId = GeneId;
-data$GeneSymbol = GeneSymbol;
-data$GeneBioType = GeneBioType;
-data$ElementStart = ElementStart;
-data$ElementEnd = ElementEnd;
-data$StartRank = StartRank;
-data$EndRank = EndRank;
-data$ExactMatch = ExactMatch;
-data$ExactMatchIds = ExactMatchIds;
-
-write.table(data, file = paste0(path, condition, "_Annotate.csv"),row.names=FALSE, na="", sep = "\t", dec = ".", quote = FALSE)
-
-
-
+resultat = completeAnnotation(data, chrList)
+write.table(resultat, file = paste0(path, condition, "_Annotate.csv"),row.names=FALSE, na="", sep = "\t", dec = ".", quote = FALSE)
 
 
