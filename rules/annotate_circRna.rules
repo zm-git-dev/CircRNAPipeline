@@ -1,14 +1,13 @@
 rule annotate_circRna:
 	input:
 		mergeTable="{replicat}/{condition}/Global_results/{sample}{condition}Merge.csv",
-		gtf=config["ANNOTATION"]["PATH"]
+		gtf=config["ANNOTATION"]["PATH"],
+		annotation_components="Rsave/intronsInGenes.rds"
 	output:
 		resultat="{replicat}/{condition}/Global_results/{sample}{condition}_Annotate.csv"
 	params:
 		condition="{condition}",
-		biomaRtDataSet=config["ANNOTATION"]["BIOMART"],
-		path="{replicat}/{condition}/Global_results/{sample}",
-		idBDD=config["ANNOTATION"]["IDBDD"]
+		path="{replicat}/{condition}/Global_results/{sample}"
 	run:
-		shell("Rscript /CirComPara/myScript/RannotateFromGTF.R --mergeTable=\"{input.mergeTable}\" --condition=\"{params.condition}\" --path=\"{params.path}\" --gtf=\"{input.gtf}\" --biomaRtDataSet=\"{params.biomaRtDataSet}\" --idBDD=\"{params.idBDD}\" ")
+		shell("Rscript /CirComPara/myScript/RannotateFromGTF.R --mergeTable=\"{input.mergeTable}\" --condition=\"{params.condition}\" --path=\"{params.path}\" --gtf=\"{input.gtf}\" ")
 

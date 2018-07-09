@@ -1,0 +1,10 @@
+rule create_annotation_components:
+	input:
+		gtf=config["ANNOTATION"]["PATH"]
+	output:
+		last_component_file="Rsave/intronsInGenes.rds"
+	params:
+		biomaRtDataSet=config["ANNOTATION"]["BIOMART"],
+		idBDD=config["ANNOTATION"]["IDBDD"]
+	run:
+		shell("Rscript /CirComPara/myScript/prepareAnnotationcomponents.R --gtf=\"{input.gtf}\" --biomaRtDataSet=\"{params.biomaRtDataSet}\" --idBDD=\"{params.idBDD}\" ")

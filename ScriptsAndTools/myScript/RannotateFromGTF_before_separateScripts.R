@@ -14,10 +14,14 @@ getArguements = function(){
                 help=" Final with merged results from differents methods", metavar="character"),
     make_option(c("--condition"), type = "character", default = NULL,
                 help="condition name", metavar="character"),
+    make_option(c("--path"), type = "character", default = NULL,
+                help="path of the ouput file", metavar="character"),
     make_option(c("--gtf"), type = "character", default = NULL,
                 help="path of the GTF file", metavar="character"),
-    make_option(c("--path"), type = "character", default = NULL,
-                help="path of the ouput file", metavar="character")
+    make_option(c("--biomaRtDataSet"), type = "character", default = NULL,
+                help="Name of the biomaRt dataset to use for annotation", metavar="character"),
+    make_option(c("--idBDD"), type = "character", default = NULL,
+                help="Name source of gene_id RefSeq or Ensembl", metavar="character")
   ); 
   opt_parser = OptionParser(option_list=option_list);
   opt = parse_args(opt_parser);
@@ -29,9 +33,21 @@ getArguements = function(){
 opt = getArguements();
 condition = as.character(opt$condition);
 path = as.character(opt$path);
-mergeTable = as.character(opt$mergeTable);
 gtf = as.character(opt$gtf);
+mergeTable = as.character(opt$mergeTable);
+idBDD = as.character(opt$idBDD);
 
+# biomaRtDataSet est directement utilisé dans le if pour savoir s'il a été envoyé sinon il n'y aura pas de geneSymbol et GeneBioType
+
+#### Avec RtrackLayer
+
+# gtf = "./newGTF.gtf";
+# path = "./Janvier2014/";
+# condition ="Senescence";
+# biomaRtDataset = "hsapiens_gene_ensembl";
+# mergeTable = "./Janvier2014/Senescence/SenescenceFinalMergeTest.csv";
+ 
+# idBDD = "Ensembl"
 
 ###################################################################################################
 ################################### START FONCTIONS  ##############################################
@@ -136,42 +152,14 @@ annotate = function(dataLine, annotateData){
   # On crée des GR initialement sans brin (pour les cas antisens)
   GRStartWithoutStrand = GRanges(seqnames = chr, ranges = IRanges(start+1, start+2+confidenceWindow),strand = "*")
   GREndWithoutStrand = GRanges(seqnames = chr, ranges = IRanges(end-1-confidenceWindow, end),strand = "*");
-  #On récupère les Genes en Start et les Genes et End
-  GenesMatchInStart = genes[subjectHits(findOverlaps(GRStartWithoutStrand, genes)),]$gene_id
-  GenesMatchInEnd = genes[subjectHits(findOverlaps(GREndWithoutStrand, genes)),]$gene_id
-  AllGenesM = base::union(GenesMatchInStart, GenesMatchInEnd)
+  
+  AllGenesM = base::union(genes[subjectHits(findOverlaps(GRStartWithoutStrand, genes)),]$gene_id, genes[subjectHits(findOverlaps(GREndWithoutStrand, genes)),]$gene_id)
   resultat = newAnnotateGR(GRStartWithoutStrand, "Start", strand, resultat, AllGenesM);
   resultat = newAnnotateGR(GREndWithoutStrand, "End", strand, resultat, AllGenesM);
   resultat[is.na(resultat)] = ""
   Genes = genes[genes$gene_id %in% AllGenesM, ]
   
-  nbGenes = GenesMatchInStartNoAntisens = GenesMatchInEndNoAntisens = SelectedGenesNoAntinsens = NULL
-  # Pour détermines les chimères, on ne considère pas les transcripts antisens car ils pourrait créer de fausses chimères
-  if(length(AllGenesM) > 0){
-    nbGenes = length(AllGenesM)
-    SelectedGenesNoAntinsens = AllGenesM[((resultat[["ClassStart"]] != "AntisensExonic" & resultat[["ClassStart"]] != "AntisensIntronic") & (resultat[["ClassEnd"]] != "AntisensExonic" & resultat[["ClassEnd"]] != "AntisensIntronic"))]
-    GenesMatchInStartNoAntisens = GenesMatchInStart[GenesMatchInStart %in% SelectedGenesNoAntinsens]
-    GenesMatchInEndNoAntisens = GenesMatchInEnd[GenesMatchInEnd %in% GenesMatchInEnd]
-  }else{
-    nbGenes = 1
-  }
-  
-  
-  # Si il a été annoté a l'échelle du gène comme étant intergenic mais que il y a au moins un gène qui mappe alors il est pas vraiment intergenic, juste notIncluded dans ce gène
-  for(i in 1:nbGenes){
-    if(resultat[["ClassStart"]][i] == "Intergenic" && length(GenesMatchInStart) > 0){
-      resultat[["ClassStart"]][i] = "notIncluded"
-    }else if(resultat[["ClassEnd"]][i] == "Intergenic" && length(GenesMatchInEnd) > 0){
-      resultat[["ClassEnd"]][i] = "notIncluded"
-    }
-  }
-  
-  #On initiale tout a false, pour les intergenic et out c'est plus pratique
-  isChimeraList = rep(FALSE, nbGenes)
-  # Pour un gènes qui n'est pas un antisens: Si il y a au moins 1 gènes (non antisens) en start et en end ET que l'intersection de ces gènes est nulle (aucun communs) alors ces gènes (hotmis les antisens) sont des chimères
-  if((length(GenesMatchInStartNoAntisens) > 0) & (length(GenesMatchInEndNoAntisens) > 0) ){
-    isChimeraList[which(AllGenesM %in% SelectedGenesNoAntinsens)] = (length(intersect(GenesMatchInStartNoAntisens, GenesMatchInEndNoAntisens)) == 0)
-  }
+  nbGenes = ifelse(length(AllGenesM) > 0, length(AllGenesM), 1)
   
   newDataAnnotate = dataLine[rep(1, nbGenes),]
   newDataAnnotate$Class = resumeAnnotationFactor(resultat, "Class", "-")
@@ -181,12 +169,9 @@ annotate = function(dataLine, annotateData){
   newDataAnnotate$GeneBioType = paste0(Genes$gene_biotype, "")
   newDataAnnotate$ElementLocusStart = resultat[["ElementLocusStart"]]
   newDataAnnotate$ElementLocusEnd = resultat[["ElementLocusEnd"]]
-  newDataAnnotate$GlobalElementLocusStart = paste0(resultat[["ElementLocusStart"]], collapse = ",")
-  newDataAnnotate$GlobalElementLocusEnd = paste0(resultat[["ElementLocusEnd"]], collapse = ",")
   newDataAnnotate$ElementTranscriptsStart = concatRes(resultat[["ElementTranscriptsStart"]], ",")
   newDataAnnotate$ElementTranscriptsEnd = concatRes(resultat[["ElementTranscriptsEnd"]], ",")
   newDataAnnotate$ExactMatch =  resultat[["ExactMatchStart"]] & resultat[["ExactMatchEnd"]]
-  newDataAnnotate$isChimera = isChimeraList
   newDataAnnotate$ExactMatchIds = resumeAllAnnotationFactor(resultat, "ExactMatchTxIds", ",")
 
   annotateData = rbind(annotateData, newDataAnnotate)
@@ -239,36 +224,242 @@ annotateIntergenic = function(resultat, test){
 }
 
 
+# Crée un objet GRanges représentant les introns à paritr des coordonnées des exons de chaque Transcripts
+getIntronsInTranscripts  = function(exonsByTranscripts, transcripts){
+  GRIntrons = GRanges();
+  for(txName in names(exonsByTranscripts)){
+    exons <- exonsByTranscripts[[txName]] %>% sort();
+    mcols(exons) = NULL
+    if(length(exons) > 1){
+      currentGRTx = GRanges(seqnames=seqnames(exons)[1], ranges=IRanges(start=min(start(exons)), end=max(end(exons))), strand=strand(exons)[1])  
+      db = disjoin(c(exons, currentGRTx));
+      ints = db[countOverlaps(db, exons) == 0]
+      #Add an ID
+      if(length(ints) > 0){
+        if(as.character(strand(currentGRTx)) == "-") {
+          ints$intron_id = c(length(ints):1)
+        } else {
+          ints$intron_id = c(1:length(ints))
+        }
+        
+        ints$transcript_id = txName
+        ints$gene_id = as.character(transcripts[transcripts$transcript_id == txName,]$gene_id)
+        GRIntrons = append(GRIntrons, ints);
+      }  
+    }
+  }
+  return(GRIntrons);
+}
 
 
-  ###################################################################################################
-  #################################### END FONCTIONS  ###############################################
-  ###################################################################################################
+
+# Crée un objet GRanges représentant les introns à paritr des coordonnées des exons de chaque Locus
+getIntronsInGenes  = function(exonsByGenes, genes){
+  GRIntrons = GRanges();
+  for(geneName in names(exonsByGenes)){
+    exons <- exonsByGenes[[geneName]] %>% reduce() %>% sort();
+    if(length(exons) > 1){
+      currentGRgene = GRanges(seqnames=seqnames(exons)[1], ranges=IRanges(start=min(start(exons)), end=max(end(exons))), strand=strand(exons)[1])
+      db = disjoin(c(exons, currentGRgene));
+      ints = db[countOverlaps(db, exons) == 0]
+      #Add an ID
+      if(length(ints) > 0){
+        if(as.character(strand(currentGRgene)) == "-") {
+          ints$intron_id = c(length(ints):1)
+        } else {
+          ints$intron_id = c(1:length(ints))
+        }
+
+        ints$gene_id = geneName
+        ints$symbol = genes[genes$gene_id == geneName,]$gene_symbol;
+        GRIntrons = append(GRIntrons, ints);
+      }
+    }
+  }
+  return(GRIntrons);
+}
 
 
-  ################################### GET_OBJECTS  ##################################################
+
+separateTxFromStAndChr = function(genes){
   
-  
-  exons = readRDS("./Rsave/exons.rds");
-  genes = readRDS("./Rsave/genes.rds");
-  transcripts = readRDS("./Rsave/transcripts.rds");
-  exonsByGenes = readRDS("./Rsave/exonsByGenes.rds");
-  exonsByTranscripts = readRDS("./Rsave/exonsByTranscripts.rds");
-  genesWithoutStrand = readRDS("./Rsave/genesWithoutStrand.rds");
-  intronsInTranscripts = readRDS("./Rsave/intronsInTranscripts.rds");
-  intronsInGenes = readRDS("./Rsave/intronsInGenes.rds");
-  
-  intronsInTranscripts = split(intronsInTranscripts, intronsInTranscripts$transcript_id); 
-  intronsInGenes = split(intronsInGenes, intronsInGenes$gene_id);
+  for(geneId in names(genes)){
+    currentGene = genes[[geneId]]
+    if( length(unique(strand(currentGene))) > 1  || length(unique(seqnames(currentGene))) > 1){
+      
+      geneFilterOnChr = GRangesList(split(currentGene, seqnames(currentGene)))
+      geneFilterOnChr = lapply(geneFilterOnChr, FUN = function(x){ if(length(x) > 0){ return(x) } } )
+      geneFilterOnChr = unlist(geneFilterOnChr)
+      geneFilterOnChr = lapply(X = geneFilterOnChr, function(x){ 
+        geneFilterOnStrand = GRangesList(split(x, strand(x)))
+        geneFilterOnStrand = lapply(geneFilterOnStrand, FUN = function(x){ if(length(x) > 0){ return(x) } } )
+        geneFilterOnStrand = unlist(geneFilterOnStrand)
+        return(geneFilterOnStrand)
+      })
+      myFinalFiltered = unlist(geneFilterOnChr, recursive = TRUE)
+      genes = genes[names(genes) != geneId]
+      for(newGeneName in names(myFinalFiltered)){
+        index = which( names(myFinalFiltered)== newGeneName)
+        newGeneId = paste0(geneId,".", index)
+        genes[[newGeneId]] = myFinalFiltered[[newGeneName]]
+      }
+    }
+  }
+  return(genes)
+}    
 
-  #####################################  ANNOTATION  ################################################
 
 
-print("Begin Annotation of candidates ....") 
+
+###################################################################################################
+#################################### END FONCTIONS  ###############################################
+###################################################################################################
 
 #On importe le GTF
 input = import(gtf);
 
+if(!file.exists("./Rsave/intronsInGenes.rds")){
+  dir.create("./Rsave/")
+  print("Objects Construction...")
+#On initialise ensembl a NULL si jamais aucun dataSet n'est donné pour biomaRt
+ ensembl = NULL;
+
+# input = import(gtf);
+
+
+#On récupère les annotation BiomaRt SI un dataSet bioMart a été indiquer
+ 
+ # On détermine a quel type va traiter si il y a requête biomaRt
+ IdType = list(RefSeq = "entrezgene", Ensembl = "ensembl_gene_id")
+ 
+ if(!is.null(opt$biomaRtDataSet)){
+      ensembl = useMart("ensembl",dataset=as.character(opt$biomaRtDataSet));
+ }
+
+ #On récupère les lignes dont l'annotation est complète (avec le gene_id)
+ annotationGTF = input[!is.na(input$gene_id), ]
+ #On récupère que les exons:
+ annotationGTF = annotationGTF[annotationGTF$type == "exon", ]
+ print("Exons Construction ....")
+ #########################################  EXONS ##################################################
+ exons = annotationGTF;
+ 
+ ###############################  EXONS BY GENES  ########################################################
+ print("ExonsByGenes Construction ...")
+ exonsByGenes = split(annotationGTF, annotationGTF$gene_id);
+ exonsByGenes = separateTxFromStAndChr(exonsByGenes)
+ 
+ exonsByGenes = unlist(exonsByGenes)
+ exonsByGenes$gene_id = names(exonsByGenes)
+ exonsByGenes = split(exonsByGenes, exonsByGenes$gene_id)
+ 
+ exonsByGenes = GRangesList(exonsByGenes);
+ 
+ #############################  GENES ##############################################################
+ print("Gene Construction ...")
+ 
+ genes = exonsByGenes
+
+ #On utilise lapply pour appliquer sur tout les éléments de la liste afin de créer l'objet GRanges associés
+ genes = lapply(X = genes, FUN = function(x){return(GRanges(seqnames = runValue(seqnames(x)), ranges = IRanges(start= min(start(ranges(x))),end = max(end(ranges(x)))), strand = runValue(strand(x))))})
+ genes = GRangesList(genes)
+ genes = unlist(genes)
+ genes$gene_id = names(genes)
+ 
+ if(!is.null(opt$biomaRtDataSet)){
+   
+   print("BiomaRt Construction ...")
+   # On récupère le nom du champ associé au type d'ID dans le GTF
+   idToRequest = IdType[[idBDD]]
+   
+ #GENE SYMBOL
+     myDataGeneID = as.data.frame(sapply(strsplit(x = genes$gene_id, split = "[.]"), '[', 1));
+     colnames(myDataGeneID) = "geneID";
+     #biomaRt
+     biomartGeneSymbol = biomaRt::getBM(attributes=c(idToRequest, 'hgnc_symbol'), filters = idToRequest, values = myDataGeneID$geneID, mart = ensembl) 
+     biomartGeneSymbol <- data.frame(lapply(biomartGeneSymbol, as.character), stringsAsFactors = TRUE);
+     colnames(biomartGeneSymbol) = c("geneID", "hgnc_symbol")
+     #filterResults car biomaRt peut renvoyer plusieurs résultata pour un même id, on prend le premier
+     biomartGeneSymbol = biomartGeneSymbol[!duplicated(biomartGeneSymbol$geneID), ]
+     output = dplyr::left_join(myDataGeneID, as.data.frame(biomartGeneSymbol), by = "geneID")
+     #On associe les identifiants
+     genes$gene_symbol = output$hgnc_symbol;
+ 
+ #GENE BIOTYPE
+     biomartGeneBiotype = biomaRt::getBM(attributes=c(idToRequest, 'gene_biotype'), filters =idToRequest, values = myDataGeneID$geneID, mart = ensembl) 
+     biomartGeneBiotype <- data.frame(lapply(biomartGeneBiotype, as.character), stringsAsFactors = TRUE);
+     colnames(biomartGeneBiotype) = c("geneID", "gene_biotype");
+     #filterResults car biomaRt peut renvoyer plusieurs résultata pour un même id, on prend le premier
+     biomartGeneBiotype = biomartGeneBiotype[!duplicated(biomartGeneBiotype$geneID), ]
+     output <-  dplyr::left_join(myDataGeneID, as.data.frame(biomartGeneBiotype), by = "geneID")
+     #On associe les identifiants
+     genes$gene_biotype = output$gene_biotype;
+ }else{
+   genes$gene_symbol = "";
+   genes$gene_biotype = ""; 
+ }
+ 
+ ###############################  TRANSCRITS  ###########################################################
+ 
+ print("Transcrit Construction ...")
+ sourceTranscrits = unlist(exonsByGenes, use.names = FALSE)
+ 
+ transcripts = split(sourceTranscrits, sourceTranscrits$transcript_id)
+
+ #On récupère les gene_id ici car je n'arrive pas a les mettre direct dans le GRange
+ geneIDForTranscripts = lapply(transcripts, FUN = function(x){return(unique(x$gene_id))})
+ transcripts = lapply(X = transcripts, FUN = function(x){return(GRanges(seqnames = runValue(seqnames(x)), ranges = IRanges(start= min(start(ranges(x))),end = max(end(ranges(x)))), strand = runValue(strand(x))))})
+ transcripts = GRangesList(transcripts)
+ transcripts = unlist(transcripts)
+ transcripts$transcript_id = names(transcripts)
+ transcripts$gene_id = geneIDForTranscripts
+ 
+ 
+ ###############################  EXONS BY TRANSCRITS  ###################################################
+ print("exonsByTranscripts Construction ...")
+ 
+ exonsByTranscripts = split(sourceTranscrits, sourceTranscrits$transcript_id)
+ exonsByTranscripts = GRangesList(exonsByTranscripts);
+
+ genesWithoutStrand = genes[,NULL]
+ strand(genesWithoutStrand) = "*"
+
+ # Pour les introns, on prend le même format que pour les exons
+ intronsInTranscripts = getIntronsInTranscripts(exonsByTranscripts, transcripts);
+ intronsInGenes = getIntronsInGenes(exonsByGenes, genes);
+
+ 
+ saveRDS(object = exons, file = "./Rsave/exons.rds")
+ saveRDS(object = genes, file = "./Rsave/genes.rds")
+ saveRDS(object = transcripts, file = "./Rsave/transcripts.rds")
+ saveRDS(object = exonsByGenes, file = "./Rsave/exonsByGenes.rds")
+ saveRDS(object = exonsByTranscripts, file = "./Rsave/exonsByTranscripts.rds")
+ saveRDS(object = genesWithoutStrand, file = "./Rsave/genesWithoutStrand.rds")
+ saveRDS(object = intronsInTranscripts, file = "./Rsave/intronsInTranscripts.rds")
+ saveRDS(object = intronsInGenes, file = "./Rsave/intronsInGenes.rds")
+
+}else{
+ 
+################################### GET_OBJECTS  ##############################################################
+
+ 
+ exons = readRDS("./Rsave/exons.rds");
+ genes = readRDS("./Rsave/genes.rds");
+ transcripts = readRDS("./Rsave/transcripts.rds");
+ exonsByGenes = readRDS("./Rsave/exonsByGenes.rds");
+ exonsByTranscripts = readRDS("./Rsave/exonsByTranscripts.rds");
+ genesWithoutStrand = readRDS("./Rsave/genesWithoutStrand.rds");
+ intronsInTranscripts = readRDS("./Rsave/intronsInTranscripts.rds");
+ intronsInGenes = readRDS("./Rsave/intronsInGenes.rds");
+
+ #####################################  ANNOTATION  ######################################################
+
+} 
+
+intronsInTranscripts = split(intronsInTranscripts, intronsInTranscripts$transcript_id); 
+intronsInGenes = split(intronsInGenes, intronsInGenes$gene_id);
+
+print("Begin Annotation of candidates ....") 
 confidenceWindow = 0; 
 
 chrList = as.character(levels(seqnames(input)))

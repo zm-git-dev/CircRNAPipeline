@@ -136,42 +136,14 @@ annotate = function(dataLine, annotateData){
   # On crée des GR initialement sans brin (pour les cas antisens)
   GRStartWithoutStrand = GRanges(seqnames = chr, ranges = IRanges(start+1, start+2+confidenceWindow),strand = "*")
   GREndWithoutStrand = GRanges(seqnames = chr, ranges = IRanges(end-1-confidenceWindow, end),strand = "*");
-  #On récupère les Genes en Start et les Genes et End
-  GenesMatchInStart = genes[subjectHits(findOverlaps(GRStartWithoutStrand, genes)),]$gene_id
-  GenesMatchInEnd = genes[subjectHits(findOverlaps(GREndWithoutStrand, genes)),]$gene_id
-  AllGenesM = base::union(GenesMatchInStart, GenesMatchInEnd)
+  
+  AllGenesM = base::union(genes[subjectHits(findOverlaps(GRStartWithoutStrand, genes)),]$gene_id, genes[subjectHits(findOverlaps(GREndWithoutStrand, genes)),]$gene_id)
   resultat = newAnnotateGR(GRStartWithoutStrand, "Start", strand, resultat, AllGenesM);
   resultat = newAnnotateGR(GREndWithoutStrand, "End", strand, resultat, AllGenesM);
   resultat[is.na(resultat)] = ""
   Genes = genes[genes$gene_id %in% AllGenesM, ]
   
-  nbGenes = GenesMatchInStartNoAntisens = GenesMatchInEndNoAntisens = SelectedGenesNoAntinsens = NULL
-  # Pour détermines les chimères, on ne considère pas les transcripts antisens car ils pourrait créer de fausses chimères
-  if(length(AllGenesM) > 0){
-    nbGenes = length(AllGenesM)
-    SelectedGenesNoAntinsens = AllGenesM[((resultat[["ClassStart"]] != "AntisensExonic" & resultat[["ClassStart"]] != "AntisensIntronic") & (resultat[["ClassEnd"]] != "AntisensExonic" & resultat[["ClassEnd"]] != "AntisensIntronic"))]
-    GenesMatchInStartNoAntisens = GenesMatchInStart[GenesMatchInStart %in% SelectedGenesNoAntinsens]
-    GenesMatchInEndNoAntisens = GenesMatchInEnd[GenesMatchInEnd %in% GenesMatchInEnd]
-  }else{
-    nbGenes = 1
-  }
-  
-  
-  # Si il a été annoté a l'échelle du gène comme étant intergenic mais que il y a au moins un gène qui mappe alors il est pas vraiment intergenic, juste notIncluded dans ce gène
-  for(i in 1:nbGenes){
-    if(resultat[["ClassStart"]][i] == "Intergenic" && length(GenesMatchInStart) > 0){
-      resultat[["ClassStart"]][i] = "notIncluded"
-    }else if(resultat[["ClassEnd"]][i] == "Intergenic" && length(GenesMatchInEnd) > 0){
-      resultat[["ClassEnd"]][i] = "notIncluded"
-    }
-  }
-  
-  #On initiale tout a false, pour les intergenic et out c'est plus pratique
-  isChimeraList = rep(FALSE, nbGenes)
-  # Pour un gènes qui n'est pas un antisens: Si il y a au moins 1 gènes (non antisens) en start et en end ET que l'intersection de ces gènes est nulle (aucun communs) alors ces gènes (hotmis les antisens) sont des chimères
-  if((length(GenesMatchInStartNoAntisens) > 0) & (length(GenesMatchInEndNoAntisens) > 0) ){
-    isChimeraList[which(AllGenesM %in% SelectedGenesNoAntinsens)] = (length(intersect(GenesMatchInStartNoAntisens, GenesMatchInEndNoAntisens)) == 0)
-  }
+  nbGenes = ifelse(length(AllGenesM) > 0, length(AllGenesM), 1)
   
   newDataAnnotate = dataLine[rep(1, nbGenes),]
   newDataAnnotate$Class = resumeAnnotationFactor(resultat, "Class", "-")
@@ -181,12 +153,9 @@ annotate = function(dataLine, annotateData){
   newDataAnnotate$GeneBioType = paste0(Genes$gene_biotype, "")
   newDataAnnotate$ElementLocusStart = resultat[["ElementLocusStart"]]
   newDataAnnotate$ElementLocusEnd = resultat[["ElementLocusEnd"]]
-  newDataAnnotate$GlobalElementLocusStart = paste0(resultat[["ElementLocusStart"]], collapse = ",")
-  newDataAnnotate$GlobalElementLocusEnd = paste0(resultat[["ElementLocusEnd"]], collapse = ",")
   newDataAnnotate$ElementTranscriptsStart = concatRes(resultat[["ElementTranscriptsStart"]], ",")
   newDataAnnotate$ElementTranscriptsEnd = concatRes(resultat[["ElementTranscriptsEnd"]], ",")
   newDataAnnotate$ExactMatch =  resultat[["ExactMatchStart"]] & resultat[["ExactMatchEnd"]]
-  newDataAnnotate$isChimera = isChimeraList
   newDataAnnotate$ExactMatchIds = resumeAllAnnotationFactor(resultat, "ExactMatchTxIds", ",")
 
   annotateData = rbind(annotateData, newDataAnnotate)

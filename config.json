@@ -1,0 +1,120 @@
+{
+	"ALIGNEMENT":
+	{
+		"bowtie2":
+		{
+			"THREAD": "24"
+		},
+		"STAR":
+		{
+			"READ_FILE_COMMAND": "zcat",
+			"THREAD": "24",
+			"chimSegmentMin":"10"
+		},
+		"STRAND":"rf"
+        },
+	"GENOME":
+	{
+		"NAME": "female.hg38",
+		"PATH": "/DATA/bioinfo_trouche/Save_Genome/Hg38ChrMRDNA/",
+		"EXTENSION": ".fa",
+		"SOURCE": "UCSC",
+		"RExpSeqNames":"c(paste('chr', c(1:22, 'X', 'M'), sep = ''), 'Hg_rDNA_completerepeatingunit')"
+	},
+	"ANNOTATION":
+	{
+		"PATH":"/DATA/bioinfo_trouche/Hg38GTF/RefSeqCuratedGTF_WithGenes.gtf",
+		"NAME":"hg38",
+		"BIOMART":"hsapiens_gene_ensembl",
+		"IDBDD":"Ensembl"
+	},
+	"INDEX":
+	{
+		"bowtie2":
+		{
+			"PATH": "indexes/bowtie2/",
+			"additionnalParamters" :"--threads 24"
+		},
+		"STAR":
+		{
+			"PATH":"indexes/STAR/",
+			"additionnalParamters" :"--runThreadN 24"
+		}
+	},
+	"BBMERGE":
+	{
+		"THREAD": "8",
+		"ITERATION": "5",
+		"EXTENDS2": "20"
+	},
+	"CHIMDETECTION":
+	{
+		"RepeatLength": "2"
+	},
+	"SAMPLE": ["HMKMGBGXY_Prolif", "HMKMGBGXY_Sen", "CONT_L1", "SEN_L1"],
+	"HMKMGBGXY_Prolif":
+	{
+		"REPLICAT": "Octobre2016NewFilter",
+		"extension": ".txt.gz",
+		"CONDITION_NAME": "Proliferation",
+		"FASTQ_1":
+		{
+			"NAME": "HMKMGBGXY_Prolif_16s005985-1-1_Nicolas_lane116s005985_1_sequence",
+			"PATH": "/DATA/bioinfo_trouche/DataRNAseq/RNA-SEQ-OCT-16-TOT/"
+		},
+		"FASTQ_2":
+		{
+			"NAME": "HMKMGBGXY_Prolif_16s005985-1-1_Nicolas_lane116s005985_2_sequence",
+			"PATH": "/DATA/bioinfo_trouche/DataRNAseq/RNA-SEQ-OCT-16-TOT/"
+		}
+	},
+	"HMKMGBGXY_Sen":
+	{
+		"REPLICAT": "Octobre2016NewFilter",
+		"extension": ".txt.gz",
+		"CONDITION_NAME": "Senescence",
+		"FASTQ_1":
+		{
+			"NAME": "HMKMGBGXY_Sen_16s005986-1-1_Nicolas_lane116s005986_1_sequence",
+			"PATH": "/DATA/bioinfo_trouche/DataRNAseq/RNA-SEQ-OCT-16-TOT/"
+		},
+		"FASTQ_2":
+		{
+			"NAME": "HMKMGBGXY_Sen_16s005986-1-1_Nicolas_lane116s005986_2_sequence",
+			"PATH": "/DATA/bioinfo_trouche/DataRNAseq/RNA-SEQ-OCT-16-TOT/"
+		}
+	},
+	"CONT_L1":
+	{
+		"REPLICAT": "Janvier2014NewFilter",
+		"extension": ".fq.gz",
+		"CONDITION_NAME": "Proliferation",
+		"FASTQ_1":
+		{
+			"NAME": "CONT_L1_1",
+			"PATH": "/DATA/bioinfo_trouche/DataRNAseq/RNA-SEQ-JANV-14-TOT/"
+		},
+		"FASTQ_2":
+		{
+			"NAME": "CONT_L1_2",
+			"PATH": "/DATA/bioinfo_trouche/DataRNAseq/RNA-SEQ-JANV-14-TOT/"
+		}
+	},
+	"SEN_L1":
+	{
+		"REPLICAT": "Janvier2014NewFilter",
+		"extension": ".fq.gz",
+		"CONDITION_NAME": "Senescence",
+		"FASTQ_1":
+		{
+			"NAME": "SEN_L1_1",
+			"PATH": "/DATA/bioinfo_trouche/DataRNAseq/RNA-SEQ-JANV-14-TOT/"
+		},
+		"FASTQ_2":
+		{
+			"NAME": "SEN_L1_2",
+			"PATH": "/DATA/bioinfo_trouche/DataRNAseq/RNA-SEQ-JANV-14-TOT/"
+		}
+	}
+	
+}
