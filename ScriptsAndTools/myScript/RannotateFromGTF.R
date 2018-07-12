@@ -49,7 +49,8 @@ newAnnotateGR = function(GR, test, strand, resultat, AllGenesM){
   Tx = transcripts[subjectHits(findOverlaps(GR, transcripts)),]
   
   resultat[[paste0("TranscriptIds", test)]] = Tx$transcript_id
-  V_ElementLocus = V_ELementTx = V_ExactMatch = V_ExactMatchTxIds = V_Class = c()
+  V_ElementLocus = V_ELementTx = V_ExactMatch = V_Class = c()
+  V_ExactMatchTxIds = list()
       # Pour chaque gène : DANS L'ORDRE
       for(i in (1:length(Genes))){
           gene = Genes[i,]
@@ -76,8 +77,7 @@ newAnnotateGR = function(GR, test, strand, resultat, AllGenesM){
           }
           # On fait le test de l'exact match à l'échelle du gène surlequel on travaille
           TxKeepedExactMatchBool = testIfExactMatch(TxForGene_i, GR, test)
-          V_ExactMatch = c(V_ExactMatch, ifelse(sum(TxKeepedExactMatchBool) != 0, TRUE, FALSE))
-          V_ExactMatchTxIds = c(V_ExactMatchTxIds, TxForGene_i[TxKeepedExactMatchBool, ]$transcript_id)
+          V_ExactMatchTxIds[[i]] = TxForGene_i[TxKeepedExactMatchBool, ]$transcript_id
       }
       V_Class = as.vector(unlist(TableOfClass[as.character(V_Class)]))
       
@@ -185,9 +185,10 @@ annotate = function(dataLine, annotateData){
   newDataAnnotate$GlobalElementLocusEnd = paste0(resultat[["ElementLocusEnd"]], collapse = ",")
   newDataAnnotate$ElementTranscriptsStart = concatRes(resultat[["ElementTranscriptsStart"]], ",")
   newDataAnnotate$ElementTranscriptsEnd = concatRes(resultat[["ElementTranscriptsEnd"]], ",")
-  newDataAnnotate$ExactMatch =  resultat[["ExactMatchStart"]] & resultat[["ExactMatchEnd"]]
+  
+  newDataAnnotate$ExactMatch =  sapply(1:nbGenes, FUN = function(i){ ifelse( length(intersect(resultat[["ExactMatchTxIdsStart"]][[i]], resultat[["ExactMatchTxIdsEnd"]][[i]])) > 0, TRUE, FALSE) })
   newDataAnnotate$isChimera = isChimeraList
-  newDataAnnotate$ExactMatchIds = resumeAllAnnotationFactor(resultat, "ExactMatchTxIds", ",")
+  newDataAnnotate$ExactMatchIds = sapply(1:nbGenes, FUN = function(i){concatRes(intersect(resultat[["ExactMatchTxIdsStart"]][[i]], resultat[["ExactMatchTxIdsEnd"]][[i]]), ",") })
 
   annotateData = rbind(annotateData, newDataAnnotate)
   
@@ -233,8 +234,9 @@ testIfExactMatch = function(GROverlapTx, GRElement, test){
 #Annotation pour les position Intergéniques
 annotateIntergenic = function(resultat, test){
   resultat[[paste0("Class",test)]] = "Intergenic";
-  resultat[[paste0("TranscriptIds", test)]] = resultat[[paste0("GeneId",test)]] = resultat[[paste0("GeneSymbol",test)]] = resultat[[paste0("GeneBioType",test)]] = resultat[[paste0("ElementLocus",test)]] = resultat[[paste0("ElementTranscripts",test)]] = resultat[[paste0("ElementLocus", test)]] = resultat[[paste0("ElementTranscripts", test)]] = resultat[[paste0("ExactMatchTxIds", test)]] = "";
+  resultat[[paste0("TranscriptIds", test)]] = resultat[[paste0("GeneId",test)]] = resultat[[paste0("GeneSymbol",test)]] = resultat[[paste0("GeneBioType",test)]] = resultat[[paste0("ElementLocus",test)]] = resultat[[paste0("ElementTranscripts",test)]] = resultat[[paste0("ElementLocus", test)]] = resultat[[paste0("ElementTranscripts", test)]] = "";
   resultat[[paste0("ExactMatch", test)]] = FALSE
+  resultat[[paste0("ExactMatchTxIds", test)]] = c()
   return(resultat);
 }
 

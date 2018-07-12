@@ -30,7 +30,7 @@ if(!is.null(opt$config)){
   
   dataAnalyseCirc = data.frame()
   dataAnalyseProcess = data.frame()
-  dataHTSeqCount = data.frame(GeneID = geneIdsList[,1])  
+  dataHTSeqCount = data.frame(GeneID = as.character(geneIdsList[,1]))  
 
   for(SampleIndex in 1:length(jsonConfig$SAMPLE)){
       SampleName = jsonConfig$SAMPLE[SampleIndex]
@@ -51,7 +51,7 @@ if(!is.null(opt$config)){
       ProcessInfo$Condition = Sample$CONDITION_NAME
       ProcessInfo$Replicat = Sample$REPLICAT
       
-      HTSeqCount = read.table(file = pathHTSeqCount, sep = "\t")
+      HTSeqCount = read.table(file = pathHTSeqCount, sep = "\t", colClasses=c("character", "numeric"))
       colnames(HTSeqCount) = c("GeneID", SampleName)
 
       dataAnalyseCirc = rbind(dataAnalyseCirc, CircPrediction)

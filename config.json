@@ -43,7 +43,6 @@
 	},
 	"BBMERGE":
 	{
-		"THREAD": "8",
 		"ITERATION": "5",
 		"EXTENDS2": "20"
 	},

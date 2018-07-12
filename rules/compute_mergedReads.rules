@@ -5,7 +5,6 @@ rule compute_mergedReads:
 	output:
 		"{replicat}/{condition}/MergedReads/{sample}_merged.fq.gz"
 	params:
-		THREAD=config["BBMERGE"]["THREAD"],
 		ITERATION=config["BBMERGE"]["ITERATION"],
 		EXTENDS2=config["BBMERGE"]["EXTENDS2"],
 		OUTDIR="{replicat}/{condition}/MergedReads/{sample}",
@@ -15,9 +14,9 @@ rule compute_mergedReads:
 		if (params.strandOrientation == "rf"):
 			shell("echo {params.strandOrientation}"),
 			shell("echo 'merge read in rf'"),
-			shell("bbmerge-auto.sh in={input.FASTQ2} in2={input.FASTQ1} out={params.NoZipedOutput} outu={params.OUTDIR}_unmerged.fq ihist={params.OUTDIR}_ihist.txt ecct extend2={params.EXTENDS2} iterations={params.ITERATION} t={params.THREAD}")
+			shell("bbmerge-auto.sh in={input.FASTQ2} in2={input.FASTQ1} out={params.NoZipedOutput} outu={params.OUTDIR}_unmerged.fq ihist={params.OUTDIR}_ihist.txt ecct extend2={params.EXTENDS2} iterations={params.ITERATION} ")
 		else :
 			shell("echo {params.strandOrientation}"),
 			shell("echo 'merge read in fr'"),
-			shell("bbmerge-auto.sh in={input.FASTQ1} in2={input.FASTQ2} out={params.NoZipedOutput} outu={params.OUTDIR}_unmerged.fq ihist={params.OUTDIR}_ihist.txt ecct extend2={params.EXTENDS2} iterations={params.ITERATION} t={params.THREAD}")
+			shell("bbmerge-auto.sh in={input.FASTQ1} in2={input.FASTQ2} out={params.NoZipedOutput} outu={params.OUTDIR}_unmerged.fq ihist={params.OUTDIR}_ihist.txt ecct extend2={params.EXTENDS2} iterations={params.ITERATION} ")
 		shell("gzip {params.NoZipedOutput}")
