@@ -13,6 +13,6 @@ rule computeFindCirc:
 		PATH_FILTERED="{replicat}/{condition}/find_circ/Resultats/{sample}",
 		firstRes="{replicat}/{condition}/find_circ/Resultats/{sample}_splice_sites.bed"
 	run:
-		shell("bowtie2 -p 16 --score-min=C,-15,0 --reorder --mm -q -U {input.ANCHORS} -x {params.INDEX} | python2.7 /CirComPara/tools/find_circ-master/find_circ.py --genome={input.GENOME} --prefix={params.PREFIX} --name={params.NAME} --stats={params.STATS} --reads={params.READS} --noncanonical > {params.firstRes}"),
+		shell("bowtie2 -p 16 --score-min=C,-15,0 --reorder --mm -q -U {input.ANCHORS} -x {params.INDEX} | python2.7 /CirComPara/tools/find_circ-master/find_circ.py --genome={input.GENOME} --prefix={params.PREFIX} --name={params.NAME} --stats={params.STATS} --reads={params.READS}  > {params.firstRes}"),
 		shell("python2.7 /CirComPara/myScript/filtered_circ.py -f {params.READS} -b {params.firstRes} -p {params.PATH_FILTERED}"),
 		shell("(echo 'Chromosome \t left_splice_site \t right_splice_site \t name \t number_of_junction_reads \t strand \t number_of_distinct_reads_junctions_sequences \t uniq_anchors \t best_anchor_alignement_score_leftSplice_junction \t best_anchor_alignement_score_rightSplice_junction \t tissues \t tiss_count \t edits \t anchor_overlap \t breakpoints \t signal \t strandmatch \t cathegorie' && cat {params.PATH_FILTERED}_filtered_splice_circ.bed) > {output.resultats}")

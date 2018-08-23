@@ -49,32 +49,41 @@ newAnnotateGR = function(GR, test, strand, resultat, AllGenesM){
   Tx = transcripts[subjectHits(findOverlaps(GR, transcripts)),]
   
   resultat[[paste0("TranscriptIds", test)]] = Tx$transcript_id
-  V_ElementLocus = V_ELementTx = V_ExactMatch = V_Class = c()
-  V_ExactMatchTxIds = list()
+  V_ElementLocus = V_Class = vector("character", length(Genes))
+  V_ExactMatchTxIds = V_ELementTxGlobal = list()
+  
       # Pour chaque gène : DANS L'ORDRE
       for(i in (1:length(Genes))){
           gene = Genes[i,]
+          PreviousV_Element = NULL
           # On cherche les élements génomique en Strand et Un_Strand
-          PreviousV_Element_Strand = computeAnnotation(GR, gene$gene_id, exonsByGenes, intronsInGenes, "@E", "@I", as.character(strand(gene)), strand, 0)
-          PreviousV_Element_Unstrand =   computeAnnotation(GR, gene$gene_id, exonsByGenes, intronsInGenes, "@AE", "@AI", as.character(strand(gene)), ifelse(strand == "+", "-", "+"), 10)
+          if(strand == as.character(strand(gene))){
+            PreviousV_Element = computeAnnotation(GR, gene$gene_id, exonsByGenes, intronsInGenes, "@E", "@I", as.character(strand(gene)), strand, 0)
+          }else{
+            PreviousV_Element = computeAnnotation(GR, gene$gene_id, exonsByGenes, intronsInGenes, "@AE", "@AI", as.character(strand(gene)), ifelse(strand == "+", "-", "+"), 10)
+          }
           # En fait pour le gène i au strat ou au end  si il y a un élément génomique il n' en a qu'un donc on regarde si la concat est > 0 si non c'est donc que rien n'as mappé on met NA
-          PreviousV_Element = c(PreviousV_Element_Strand$Element, PreviousV_Element_Unstrand$Element)
-          V_ElementLocus = c(V_ElementLocus, ifelse(length(PreviousV_Element) > 0, yes = PreviousV_Element, no = "NA"))
+          V_ElementLocus[i] = ifelse(length(PreviousV_Element$Element) > 0, yes = PreviousV_Element$Element, no = "NA")
+          V_Class[i] = PreviousV_Element$Class
           
-          V_Class = c(V_Class, (PreviousV_Element_Strand$Class + PreviousV_Element_Unstrand$Class))
-          
-          TxForGene_i = Tx[Tx$gene_id == gene$gene_id,]          
+          TxForGene_i = Tx[Tx$gene_id == gene$gene_id,] 
           if(length(TxForGene_i) > 0){
+              V_ELementTx = rep("", length(TxForGene_i))
               for(j in (1:length(TxForGene_i))){
                 transcript = TxForGene_i[j, ]
-                # On fait pareil pour tout les transcripts associés au gène
-                PreviousV_Element = c(computeAnnotation(GR, transcript$transcript_id, exonsByTranscripts, intronsInTranscripts, "@E", "@I", as.character(strand(transcript)), strand, 0)$Element,
-                                      computeAnnotation(GR, transcript$transcript_id, exonsByTranscripts, intronsInTranscripts, "@AE", "@AI", as.character(strand(transcript)), ifelse(strand == "+", "-", "+"), 10)$Element)
-                
-                V_ELementTx = c(V_ELementTx, ifelse(length(PreviousV_Element) > 0, yes = PreviousV_Element, no = "NA"))
-                
+                PreviousV_Element = NULL
+                if(strand == as.character(strand(gene))){
+                  PreviousV_Element = computeAnnotation(GR, transcript$transcript_id, exonsByTranscripts, intronsInTranscripts, "@E", "@I", as.character(strand(transcript)), strand, 0)$Element
+                }else{
+                  PreviousV_Element = computeAnnotation(GR, transcript$transcript_id, exonsByTranscripts, intronsInTranscripts, "@AE", "@AI", as.character(strand(transcript)), ifelse(strand == "+", "-", "+"), 10)$Element
+                }
+                V_ELementTx[j] = ifelse(length(PreviousV_Element) > 0, yes = PreviousV_Element, no = "NA")
               }
+              V_ELementTxGlobal[[i]] = paste0(V_ELementTx, collapse = ",")
+          }else{
+            V_ELementTxGlobal[[i]] = "NA"
           }
+          
           # On fait le test de l'exact match à l'échelle du gène surlequel on travaille
           TxKeepedExactMatchBool = testIfExactMatch(TxForGene_i, GR, test)
           V_ExactMatchTxIds[[i]] = TxForGene_i[TxKeepedExactMatchBool, ]$transcript_id
@@ -82,9 +91,8 @@ newAnnotateGR = function(GR, test, strand, resultat, AllGenesM){
       V_Class = as.vector(unlist(TableOfClass[as.character(V_Class)]))
       
   resultat[[paste0("ElementLocus",test)]] = V_ElementLocus
-  resultat[[paste0("ElementTranscripts",test)]] = V_ELementTx
+  resultat[[paste0("ElementTranscripts",test)]] = unlist(V_ELementTxGlobal)
   resultat[[paste0("Class",test)]] = V_Class
-  resultat[[paste0("ExactMatch",test)]] = V_ExactMatch
   resultat[[paste0("ExactMatchTxIds",test)]] = V_ExactMatchTxIds
   
   }else{
@@ -183,8 +191,10 @@ annotate = function(dataLine, annotateData){
   newDataAnnotate$ElementLocusEnd = resultat[["ElementLocusEnd"]]
   newDataAnnotate$GlobalElementLocusStart = paste0(resultat[["ElementLocusStart"]], collapse = ",")
   newDataAnnotate$GlobalElementLocusEnd = paste0(resultat[["ElementLocusEnd"]], collapse = ",")
-  newDataAnnotate$ElementTranscriptsStart = concatRes(resultat[["ElementTranscriptsStart"]], ",")
-  newDataAnnotate$ElementTranscriptsEnd = concatRes(resultat[["ElementTranscriptsEnd"]], ",")
+  newDataAnnotate$ElementTranscriptsStart = resultat[["ElementTranscriptsStart"]]
+  newDataAnnotate$ElementTranscriptsEnd = resultat[["ElementTranscriptsEnd"]]
+  newDataAnnotate$GlobalElementTranscriptsStart = paste0(resultat[["ElementTranscriptsStart"]][resultat[["ElementTranscriptsStart"]] != "NA"], collapse = ",")
+  newDataAnnotate$GloablElementTranscriptsEnd = paste0(resultat[["ElementTranscriptsEnd"]][resultat[["ElementTranscriptsEnd"]] != "NA"], collapse = ",")
   
   newDataAnnotate$ExactMatch =  sapply(1:nbGenes, FUN = function(i){ ifelse( length(intersect(resultat[["ExactMatchTxIdsStart"]][[i]], resultat[["ExactMatchTxIdsEnd"]][[i]])) > 0, TRUE, FALSE) })
   newDataAnnotate$isChimera = isChimeraList
@@ -235,7 +245,6 @@ testIfExactMatch = function(GROverlapTx, GRElement, test){
 annotateIntergenic = function(resultat, test){
   resultat[[paste0("Class",test)]] = "Intergenic";
   resultat[[paste0("TranscriptIds", test)]] = resultat[[paste0("GeneId",test)]] = resultat[[paste0("GeneSymbol",test)]] = resultat[[paste0("GeneBioType",test)]] = resultat[[paste0("ElementLocus",test)]] = resultat[[paste0("ElementTranscripts",test)]] = resultat[[paste0("ElementLocus", test)]] = resultat[[paste0("ElementTranscripts", test)]] = "";
-  resultat[[paste0("ExactMatch", test)]] = FALSE
   resultat[[paste0("ExactMatchTxIds", test)]] = c()
   return(resultat);
 }
