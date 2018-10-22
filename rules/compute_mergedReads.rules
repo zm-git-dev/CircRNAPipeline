@@ -3,8 +3,13 @@ rule compute_mergedReads:
 		FASTQ1=lambda wildcards: config[wildcards.sample]["FASTQ_1"]["PATH"]+config[wildcards.sample]["FASTQ_1"]["NAME"]+config[wildcards.sample]["extension"],
 		FASTQ2=lambda wildcards: config[wildcards.sample]["FASTQ_2"]["PATH"]+config[wildcards.sample]["FASTQ_2"]["NAME"]+config[wildcards.sample]["extension"]
 	output:
-		"{replicat}/{condition}/MergedReads/{sample}_merged.fq.gz"
+		"{replicat}/{condition}/MergedReads/{sample}_merged.fq.gz",
+		"{replicat}/{condition}/MergedReads/{sample}_1_unmerged.fq",
+		"{replicat}/{condition}/MergedReads/{sample}_2_unmerged.fq"
 	params:
+		JAVA_MEM=config["BBMERGE"]["JavaMem"],
+		K=config["BBMERGE"]["K"],
+		THREADS=config["BBMERGE"]["THREAD"],
 		ITERATION=config["BBMERGE"]["ITERATION"],
 		EXTENDS2=config["BBMERGE"]["EXTENDS2"],
 		OUTDIR="{replicat}/{condition}/MergedReads/{sample}",
@@ -14,9 +19,10 @@ rule compute_mergedReads:
 		if (params.strandOrientation == "rf"):
 			shell("echo {params.strandOrientation}"),
 			shell("echo 'merge read in rf'"),
-			shell("bbmerge-auto.sh in={input.FASTQ2} in2={input.FASTQ1} out={params.NoZipedOutput} outu={params.OUTDIR}_unmerged.fq ihist={params.OUTDIR}_ihist.txt ecct extend2={params.EXTENDS2} iterations={params.ITERATION} ")
+			shell("bbmerge-auto.sh in={input.FASTQ2} in2={input.FASTQ1} out={params.NoZipedOutput} outu={params.OUTDIR}_2_unmerged.fq outu2={params.OUTDIR}_1_unmerged.fq ihist={params.OUTDIR}_ihist.txt ecct extend2={params.EXTENDS2} iterations={params.ITERATION} k={params.K} prealloc=t -Xmx{params.JAVA_MEM}")
 		else :
 			shell("echo {params.strandOrientation}"),
 			shell("echo 'merge read in fr'"),
-			shell("bbmerge-auto.sh in={input.FASTQ1} in2={input.FASTQ2} out={params.NoZipedOutput} outu={params.OUTDIR}_unmerged.fq ihist={params.OUTDIR}_ihist.txt ecct extend2={params.EXTENDS2} iterations={params.ITERATION} ")
+			shell("bbmerge-auto.sh in={input.FASTQ1} in2={input.FASTQ2} out={params.NoZipedOutput} outu={params.OUTDIR}_1_unmerged.fq outu2={params.OUTDIR}_2_unmerged.fq ihist={params.OUTDIR}_ihist.txt ecct extend2={params.EXTENDS2} iterations={params.ITERATION} k={params.K} prealloc=t -Xmx{params.JAVA_MEM}")
 		shell("gzip {params.NoZipedOutput}")
+

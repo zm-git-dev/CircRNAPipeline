@@ -1,10 +1,10 @@
 rule parse_chimeric_junction:
 	input:
-		FILE_INPUT="{replicat}/{condition}/AlignementStarWithChimeric/{sample}_ChimericFilter.out.junction"
+		FILE_INPUT="{replicat}/{condition}/AlignementStarWithChimeric/{type}/{sample}_{type}_ChimericFilter.out.junction"
 	output:
-		headerFile_BackSpliced="{replicat}/{condition}/CircExplorer2/{sample}_back_spliced_junction_withHeaders.bed"
+		headerFile_BackSpliced="{replicat}/{condition}/CircExplorer2/{type}/{sample}_{type}_back_spliced_junction_withHeaders.bed"
 	params:
-		parsedJunction="{replicat}/{condition}/CircExplorer2/{sample}_back_spliced_junction.bed"
+		parsedJunction="{replicat}/{condition}/CircExplorer2/{type}/{sample}_{type}_back_spliced_junction.bed"
 	run:
 		shell("CIRCexplorer2 parse --b {params.parsedJunction} -t STAR {input.FILE_INPUT} > CIRCexplorer2_parse.log"),
 		shell("(echo 'Chromosome \t Start_of_fusion_junction \t End_of_fusion_junction \t Strand \t Fusion_id/Junction_reads \t No meaning \t No meaning \t Reads' && cat {params.parsedJunction}) > {output.headerFile_BackSpliced}")

@@ -1,12 +1,12 @@
 rule computeAnchors:
 	input:
-		FILE_INPUT="{replicat}/{condition}/AlignementBowtie2/{sample}_sorted.bam"
+		FILE_INPUT="{replicat}/{condition}/AlignementBowtie2/{type}/{sample}_{type}_sorted.bam"
 	output:
-		FILE_OUTPUT="{replicat}/{condition}/find_circ/{sample}_anchors.fastq.gz"
+		FILE_OUTPUT="{replicat}/{condition}/find_circ/{type}/{sample}_{type}_anchors.fastq.gz"
 	params:
-		tmpUnmap="{replicat}/{condition}/find_circ/{sample}_unMapped.bam",
-		tmpHeaderLengthFilter="{replicat}/{condition}/find_circ/{sample}_readsAnchors.fastq",
-		tmpfilteredHeader="{replicat}/{condition}/find_circ/{sample}_readsAnchorsfiltered.fastq"
+		tmpUnmap="{replicat}/{condition}/find_circ/{type}/{sample}_{type}_unMapped.bam",
+		tmpHeaderLengthFilter="{replicat}/{condition}/find_circ/{type}/{sample}_{type}_readsAnchors.fastq",
+		tmpfilteredHeader="{replicat}/{condition}/find_circ/{type}/{sample}_{type}_readsAnchorsfiltered.fastq"
 		
 	run:
 		shell("samtools view -hf 4 {input.FILE_INPUT} | samtools view -Sb > {params.tmpUnmap}"),

@@ -1,8 +1,17 @@
+def inputFilesCircExplorer2(wildcards):
+	return expand("{replicat}/{condition}/CircExplorer2/{type}/{sample}_{type}_back_spliced_junction_withHeaders.bed", type=config["USED_READS"], replicat=wildcards.replicat, condition=wildcards.condition, sample=wildcards.sample)
+
+def inputFilesCircRNAFinder(wildcards):
+	return expand("{replicat}/{condition}/circRNA_finder/{type}/{sample}_{type}_filteredJunctions_withHeaders.bed", type=config["USED_READS"], replicat=wildcards.replicat, condition=wildcards.condition, sample=wildcards.sample)
+
+def inputFilesFindCirc(wildcards):
+	return expand("{replicat}/{condition}/find_circ/{type}/Resultats/{sample}_{type}_filtered_splice_circ_withHeaders.bed", type=config["USED_READS"], replicat=wildcards.replicat, condition=wildcards.condition, sample=wildcards.sample)
+
 rule merge_predictions:
 	input:
-		CIRCEXPLORER2="{replicat}/{condition}/CircExplorer2/{sample}_back_spliced_junction_withHeaders.bed",
-		FINDCIRC="{replicat}/{condition}/find_circ/Resultats/{sample}_filtered_splice_circ_withHeaders.bed",
-		CIRCRNAFINDER="{replicat}/{condition}/circRNA_finder/{sample}_filteredJunctions_withHeaders.bed",
+		CIRCEXPLORER2=inputFilesCircExplorer2,
+		CIRCRNAFINDER=inputFilesCircRNAFinder,
+		FINDCIRC=inputFilesFindCirc,
 		PACKAGE_GENOME="BSgenome."+config["GENOME"]["NAME"]+"."+config["GENOME"]["SOURCE"]+".1_1.0.tar.gz"
 	output:
 		merge="{replicat}/{condition}/Global_results/{sample}{condition}Merge.csv"
@@ -10,5 +19,5 @@ rule merge_predictions:
 		condition="{condition}",
 		path="{replicat}/{condition}/Global_results/{sample}",
 		packageName="BSgenome."+config["GENOME"]["NAME"]+"."+config["GENOME"]["SOURCE"]+".1"
-	run:
-		shell("Rscript /CirComPara/myScript/mergeScript.R --circExplorer2=\"{input.CIRCEXPLORER2}\" --circRNAFinder=\"{input.CIRCRNAFINDER}\" --findCirc=\"{input.FINDCIRC}\" --condition=\"{params.condition}\" --outputPath=\"{params.path}\" --packageName=\"{params.packageName}\" ")	
+	script:
+		"/CirComPara/myScript/mergeScript.R"

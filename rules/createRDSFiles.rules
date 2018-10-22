@@ -1,14 +1,14 @@
 rule createRDSFiles:
 	input:
 		[config[data]["REPLICAT"]+"/"+config[data]["CONDITION_NAME"]+"/Global_results/"+data+config[data]["CONDITION_NAME"]+"_Annotate.csv" for data in config["SAMPLE"]],
-		[config[data]["REPLICAT"]+"/"+config[data]["CONDITION_NAME"]+"/Global_results/"+data+config[data]["CONDITION_NAME"]+"_ProcessingInfos.csv" for data in config["SAMPLE"]],
-		[config[data]["REPLICAT"]+"/"+config[data]["CONDITION_NAME"]+"/Global_results/"+data+config[data]["CONDITION_NAME"]+"_htSeqCount.txt" for data in config["SAMPLE"]]
+		[config[data]["REPLICAT"]+"/"+config[data]["CONDITION_NAME"]+"/Global_results/"+data+config[data]["CONDITION_NAME"]+"_"+type+"_ProcessingInfos.csv" for data in config["SAMPLE"] for type in config["USED_READS"]],
+		[config[data]["REPLICAT"]+"/"+config[data]["CONDITION_NAME"]+"/Global_results/"+data+config[data]["CONDITION_NAME"]+"_"+type+"_htSeqCount.txt" for data in config["SAMPLE"] for type in config["USED_READS_GENES"]]
+		
 	params:
 		GTF=config["ANNOTATION"]["PATH"]
 	output:
 		FILE_OUTPUT1="dataAnalyseCirc.rds",
 		FILE_OUTPUT2="dataAnalyseProcess.rds",
 		FILE_OUTPUT3="dataHTSEQcount.rds"
-	run:
-		shell(" awk '$3 == \"gene\"{{print $10}}' {params.GTF} | cut -d '\"' -f2 > ./Rsave/geneIdsList.txt "),
-		shell("Rscript /CirComPara/myScript/createResult.R --config=\"config.json\" --geneIdsList=\"Rsave/geneIdsList.txt\" ")		
+	script:
+		"/CirComPara/myScript/createResult.R"		

@@ -6,9 +6,9 @@ rule bowtie2_aln:
 		INDEX4=config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]+".4.bt2",
 		INDEX_REV1=config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]+".rev.1.bt2",
 		INDEX_REV2=config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"]+".rev.2.bt2",
-		FASTQ="{replicat}/{condition}/MergedReads/{sample}_merged.fq.gz"
+		FASTQ="{replicat}/{condition}/MergedReads/{sample}_{type}.fq.gz"
 		
-	output: "{replicat}/{condition}/AlignementBowtie2/{sample}_sorted.bam"
+	output: "{replicat}/{condition}/AlignementBowtie2/{type}/{sample}_{type}_sorted.bam"
 	params:
 		BASENAME=config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"],
 		THREADS=config["ALIGNEMENT"]["bowtie2"]["THREAD"]

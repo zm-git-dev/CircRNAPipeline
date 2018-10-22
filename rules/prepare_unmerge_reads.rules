@@ -1,0 +1,20 @@
+rule prepare_unmerge_reads:
+	input:
+		FASTQ_unMerged_1="{replicat}/{condition}/MergedReads/{sample}_1_unmerged.fq",
+		FASTQ_unMerged_2="{replicat}/{condition}/MergedReads/{sample}_2_unmerged.fq"
+	output:
+		"{replicat}/{condition}/MergedReads/{sample}_unmerged.fq.gz"
+	params:
+		strandOrientation=config["ALIGNEMENT"]["STRAND"],
+		unZippedFile="{replicat}/{condition}/MergedReads/{sample}_unmerged.fq"
+	
+
+	run:
+		if (params.strandOrientation == "rf"):
+			shell("fastaq reverse_complement {input.FASTQ_unMerged_1} reverse_complement_file.fq ")
+			shell("cat {input.FASTQ_unMerged_2} reverse_complement_file.fq >> {params.unZippedFile} ")
+		else:
+			shell("fastaq reverse_complement {input.FASTQ_unMerged_2} reverse_complement_file.fq ")
+			shell("cat {input.FASTQ_unMerged_1} reverse_complement_file.fq >> {params.unZippedFile} ")
+		shell("gzip {params.unZippedFile}")
+		shell("rm reverse_complement_file.fq")

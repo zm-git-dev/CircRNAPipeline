@@ -1,0 +1,5 @@
+rule launchtest:
+	input:
+		[config[data]["REPLICAT"]+"/"+config[data]["CONDITION_NAME"]+"/Global_results/"+data+config[data]["CONDITION_NAME"]+"Merge.csv" for data in ["HMKMGBGXY_Sen", "HMKMGBGXY_Prolif"]],
+		[config[data]["REPLICAT"]+"/"+config[data]["CONDITION_NAME"]+"/Global_results/"+data+config[data]["CONDITION_NAME"]+"_"+type+"_ProcessingInfos.csv" for data in ["HMKMGBGXY_Sen", "HMKMGBGXY_Prolif"] for type in config["USED_READS"]],
+		[config[data]["REPLICAT"]+"/"+config[data]["CONDITION_NAME"]+"/Global_results/"+data+config[data]["CONDITION_NAME"]+"_"+type+"_htSeqCount.txt" for data in ["HMKMGBGXY_Sen", "HMKMGBGXY_Prolif"] for type in config["USED_READS_GENES"]]

@@ -1,17 +1,17 @@
 rule computeFindCirc:
 	input:
-		ANCHORS="{replicat}/{condition}/find_circ/{sample}_anchors.fastq.gz",
+		ANCHORS="{replicat}/{condition}/find_circ/{type}/{sample}_{type}_anchors.fastq.gz",
 		GENOME=config["GENOME"]["PATH"]+config["GENOME"]["NAME"]+config["GENOME"]["EXTENSION"]
 	output:
-		resultats="{replicat}/{condition}/find_circ/Resultats/{sample}_filtered_splice_circ_withHeaders.bed"
+		resultats="{replicat}/{condition}/find_circ/{type}/Resultats/{sample}_{type}_filtered_splice_circ_withHeaders.bed"
 	params:	
 		INDEX=config["INDEX"]["bowtie2"]["PATH"]+config["GENOME"]["NAME"],
-		NAME="Sample_{replicat}_{condition}_",
-		PREFIX="{replicat}_{condition}_",
-		STATS="{replicat}/{condition}/find_circ/Resultats/{sample}_stats.txt",
-		READS="{replicat}/{condition}/find_circ/Resultats/{sample}_spliced_reads.fa",
-		PATH_FILTERED="{replicat}/{condition}/find_circ/Resultats/{sample}",
-		firstRes="{replicat}/{condition}/find_circ/Resultats/{sample}_splice_sites.bed"
+		NAME="Sample_{replicat}_{condition}_{type}_",
+		PREFIX="{replicat}_{condition}_{type}_",
+		STATS="{replicat}/{condition}/find_circ/{type}/Resultats/{sample}_{type}_stats.txt",
+		READS="{replicat}/{condition}/find_circ/{type}/Resultats/{sample}_{type}_spliced_reads.fa",
+		PATH_FILTERED="{replicat}/{condition}/find_circ/{type}/Resultats/{sample}_{type}",
+		firstRes="{replicat}/{condition}/find_circ/{type}/Resultats/{sample}_{type}_splice_sites.bed"
 	run:
 		shell("bowtie2 -p 16 --score-min=C,-15,0 --reorder --mm -q -U {input.ANCHORS} -x {params.INDEX} | python2.7 /CirComPara/tools/find_circ-master/find_circ.py --genome={input.GENOME} --prefix={params.PREFIX} --name={params.NAME} --stats={params.STATS} --reads={params.READS}  > {params.firstRes}"),
 		shell("python2.7 /CirComPara/myScript/filtered_circ.py -f {params.READS} -b {params.firstRes} -p {params.PATH_FILTERED}"),
