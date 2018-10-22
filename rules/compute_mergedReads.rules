@@ -19,10 +19,10 @@ rule compute_mergedReads:
 		if (params.strandOrientation == "rf"):
 			shell("echo {params.strandOrientation}"),
 			shell("echo 'merge read in rf'"),
-			shell("bbmerge-auto.sh in={input.FASTQ2} in2={input.FASTQ1} out={params.NoZipedOutput} outu={params.OUTDIR}_2_unmerged.fq outu2={params.OUTDIR}_1_unmerged.fq ihist={params.OUTDIR}_ihist.txt ecct extend2={params.EXTENDS2} iterations={params.ITERATION} k={params.K} prealloc=t -Xmx{params.JAVA_MEM}")
+			shell("bbmerge-auto.sh in={input.FASTQ2} in2={input.FASTQ1} out={params.NoZipedOutput} outu={params.OUTDIR}_2_unmerged.fq outu2={params.OUTDIR}_1_unmerged.fq ihist={params.OUTDIR}_ihist.txt ecct extend2={params.EXTENDS2} iterations={params.ITERATION} k={params.K} prealloc=t -Xmx{params.JAVA_MEM} -t={params.THREADS}")
 		else :
 			shell("echo {params.strandOrientation}"),
 			shell("echo 'merge read in fr'"),
-			shell("bbmerge-auto.sh in={input.FASTQ1} in2={input.FASTQ2} out={params.NoZipedOutput} outu={params.OUTDIR}_1_unmerged.fq outu2={params.OUTDIR}_2_unmerged.fq ihist={params.OUTDIR}_ihist.txt ecct extend2={params.EXTENDS2} iterations={params.ITERATION} k={params.K} prealloc=t -Xmx{params.JAVA_MEM}")
+			shell("bbmerge-auto.sh in={input.FASTQ1} in2={input.FASTQ2} out={params.NoZipedOutput} outu={params.OUTDIR}_1_unmerged.fq outu2={params.OUTDIR}_2_unmerged.fq ihist={params.OUTDIR}_ihist.txt ecct extend2={params.EXTENDS2} iterations={params.ITERATION} k={params.K} prealloc=t -Xmx{params.JAVA_MEM} -t={params.THREADS}")
 		shell("gzip {params.NoZipedOutput}")
 
