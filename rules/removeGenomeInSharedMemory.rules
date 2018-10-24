@@ -1,0 +1,13 @@
+rule removeGenomeInSharedMemory:
+	input:
+		[config[data]["REPLICAT"]+"/"+config[data]["CONDITION_NAME"]+"/AlignementStarWithChimeric/"+type+"/"+data+"_"+type+"_Chimeric.out.junction" for data in config["SAMPLE"] for type in config["USED_READS"]],
+		[config[data]["REPLICAT"]+"/"+config[data]["CONDITION_NAME"]+"/AlignementStarWithChimeric/"+type+"/"+data+"_"+type+"_Aligned.out.sam" for data in config["SAMPLE"] for type in config["USED_READS"]],
+		[config[data]["REPLICAT"]+"/"+config[data]["CONDITION_NAME"]+"/AlignementStarWithChimeric/"+type+"/"+data+"_"+type+"_Log.final.out" for data in config["SAMPLE"] for type in config["USED_READS"]]
+
+	params:
+		indexDir=config["INDEX"]["STAR"]["PATH"]
+	output:
+		"genomeIsRemove.info"
+	run:
+		shell("STAR --genomeDir {params.indexDir} --genomeLoad Remove"),
+		shell("touch genomeIsRemove.info")

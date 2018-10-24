@@ -1,15 +1,21 @@
 {
+	"USED_READS": ["merged", "unmerged"],
+	"USED_READS_GENES": ["merged", "unmerged"],
 	"ALIGNEMENT":
 	{
 		"bowtie2":
 		{
-			"THREAD": "24"
+			"THREAD": "12"
 		},
 		"STAR":
 		{
 			"READ_FILE_COMMAND": "zcat",
-			"THREAD": "24",
-			"chimSegmentMin":"10"
+			"THREAD": "12",
+			"chimSegmentMin":
+					{
+						"merged": "10",
+						"unmerged": "10"
+					}
 		},
 		"STRAND":"rf"
         },
@@ -26,7 +32,7 @@
 		"PATH":"/DATA/bioinfo_trouche/Hg38GTF/RefSeqCuratedGTF_WithGenes.gtf",
 		"NAME":"hg38",
 		"BIOMART":"hsapiens_gene_ensembl",
-		"IDBDD":"Ensembl"
+		"IDBDD":"RefSeq"
 	},
 	"INDEX":
 	{
@@ -38,22 +44,21 @@
 		"STAR":
 		{
 			"PATH":"indexes/STAR/",
-			"additionnalParamters" :"--runThreadN 24"
+			"additionnalParamters" :"--runThreadN 12"
 		}
 	},
 	"BBMERGE":
 	{
 		"ITERATION": "5",
-		"EXTENDS2": "20"
-	},
-	"CHIMDETECTION":
-	{
-		"RepeatLength": "2"
+		"EXTENDS2": "20",
+		"THREAD": "12",
+		"K": "31",
+		"JavaMem": "30000m"
 	},
 	"SAMPLE": ["HMKMGBGXY_Prolif", "HMKMGBGXY_Sen", "CONT_L1", "SEN_L1"],
 	"HMKMGBGXY_Prolif":
 	{
-		"REPLICAT": "Octobre2016NewFilter",
+		"REPLICAT": "Octobre2016",
 		"extension": ".txt.gz",
 		"CONDITION_NAME": "Proliferation",
 		"FASTQ_1":
@@ -69,7 +74,7 @@
 	},
 	"HMKMGBGXY_Sen":
 	{
-		"REPLICAT": "Octobre2016NewFilter",
+		"REPLICAT": "Octobre2016",
 		"extension": ".txt.gz",
 		"CONDITION_NAME": "Senescence",
 		"FASTQ_1":
@@ -85,7 +90,7 @@
 	},
 	"CONT_L1":
 	{
-		"REPLICAT": "Janvier2014NewFilter",
+		"REPLICAT": "Janvier2014",
 		"extension": ".fq.gz",
 		"CONDITION_NAME": "Proliferation",
 		"FASTQ_1":
@@ -101,7 +106,7 @@
 	},
 	"SEN_L1":
 	{
-		"REPLICAT": "Janvier2014NewFilter",
+		"REPLICAT": "Janvier2014",
 		"extension": ".fq.gz",
 		"CONDITION_NAME": "Senescence",
 		"FASTQ_1":

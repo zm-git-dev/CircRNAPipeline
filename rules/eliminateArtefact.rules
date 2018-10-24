@@ -1,6 +1,7 @@
 rule eliminate_artefacts:
 	input:
-		ChimericFile="{replicat}/{condition}/AlignementStarWithChimeric/{type}/{sample}_{type}_Chimeric.out.junction"
+		ChimericFile="{replicat}/{condition}/AlignementStarWithChimeric/{type}/{sample}_{type}_Chimeric.out.junction",
+		AlnInfos="genomeIsRemove.info"
 	output:
 		resultatFilter="{replicat}/{condition}/AlignementStarWithChimeric/{type}/{sample}_{type}_ChimericFilter.out.junction"
 	run:

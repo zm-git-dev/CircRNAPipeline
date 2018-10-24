@@ -15,6 +15,7 @@ rule star_aln_with_chimeric:
 		gtf=config["ANNOTATION"]["PATH"],
 		P_chimSegmentMin=lambda wildcards: config["ALIGNEMENT"]["STAR"]["chimSegmentMin"][wildcards.type]
 	run:
-		shell("STAR --chimSegmentMin {params.P_chimSegmentMin} --runThreadN {params.thread} --genomeDir {params.indexDir} --readFilesIn {input.FASTQ} --readFilesCommand {params.readFileCommand} --outFileNamePrefix {params.outputDir} --sjdbGTFfile {params.gtf}")
+		shell("sleep $((RANDOM % 60))")
+		shell("STAR --chimSegmentMin {params.P_chimSegmentMin} --runThreadN {params.thread} --genomeDir {params.indexDir} --readFilesIn {input.FASTQ} --readFilesCommand {params.readFileCommand} --outFileNamePrefix {params.outputDir} --genomeLoad LoadAndKeep ")
 
 

@@ -5,6 +5,7 @@ rule star_index:
 		config["INDEX"]["STAR"]["PATH"]+"Genome"
 	params:
 		addParameter=config["INDEX"]["STAR"]["additionnalParamters"],
-		outputDir=config["INDEX"]["STAR"]["PATH"]
+		outputDir=config["INDEX"]["STAR"]["PATH"],
+		gtf=config["ANNOTATION"]["PATH"]
 	run:
-		shell("STAR {params.addParameter} --runMode genomeGenerate --genomeDir {params.outputDir} --genomeFastaFiles {input.GENOME}")		
+		shell("STAR {params.addParameter} --runMode genomeGenerate --genomeDir {params.outputDir} --genomeFastaFiles {input.GENOME} --sjdbGTFfile {params.gtf} ")		
